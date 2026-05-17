@@ -45,7 +45,7 @@ Edit `.env` and replace `<LAPTOP_IPV4>` with the new laptop IPv4 address for phy
 ## Python Services
 
 ```powershell
-cd "..\..\..\homography"
+cd "..\..\homography"
 py -3.10 -m venv .venv-homography
 .\.venv-homography\Scripts\Activate.ps1
 python -m pip install --upgrade pip setuptools wheel
