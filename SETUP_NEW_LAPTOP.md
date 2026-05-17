@@ -24,6 +24,20 @@ Install these on the new laptop:
 - Android Studio with Android SDK
 - Android Studio Embedded JDK or JDK 17
 
+Check available Python versions with:
+
+```powershell
+py -0p
+```
+
+For consistency with the current PC, install and use Python 3.10 on the new laptop.
+
+If Python 3.10 is missing, install Python 3.10 first:
+
+```powershell
+winget install -e --id Python.Python.3.10
+```
+
 ## First Clone
 
 ```powershell
@@ -44,6 +58,14 @@ Edit `.env` and replace `<LAPTOP_IPV4>` with the new laptop IPv4 address for phy
 
 ## Python Services
 
+First confirm your Python versions:
+
+```powershell
+py -0p
+```
+
+Use Python 3.10 for both services so the new laptop matches the current machine.
+
 ```powershell
 cd "..\..\homography"
 py -3.10 -m venv .venv-homography
@@ -59,6 +81,8 @@ python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 deactivate
 ```
+
+If `py -3.10` fails with `No suitable Python runtime found`, install Python 3.10, reopen the terminal, and rerun the commands.
 
 The YOLO service expects the model here:
 

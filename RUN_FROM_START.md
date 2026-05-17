@@ -37,9 +37,26 @@ node -v
 npm.cmd -v
 python --version
 git lfs version
+py -0p
 ```
 
 Use `npm.cmd`, not `npm`, in PowerShell.
+
+For this project, keep Python 3.10 on the new laptop so it matches the current machine.
+
+If `py -0p` does not show Python 3.10, install Python 3.10 first.
+
+Recommended Windows command:
+
+```powershell
+winget install -e --id Python.Python.3.10
+```
+
+Then close and reopen the terminal and confirm with:
+
+```powershell
+py -0p
+```
 
 ## 3. Install Frontend Dependencies
 
@@ -132,6 +149,14 @@ It should return a healthy JSON response.
 
 ## 7. Create Python Environments
 
+First check which Python versions are available:
+
+```powershell
+py -0p
+```
+
+Use Python 3.10 for both services so the new laptop matches the current PC. Do not use Python 3.12 or newer for this project unless you deliberately retest the dependency stack.
+
 From the React/Capacitor app folder, create the homography environment:
 
 ```powershell
@@ -153,6 +178,8 @@ python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 deactivate
 ```
+
+If you get `No suitable Python runtime found`, it means Python 3.10 is not installed yet. Install Python 3.10, reopen the terminal, and rerun the commands.
 
 The YOLO model must exist here:
 
