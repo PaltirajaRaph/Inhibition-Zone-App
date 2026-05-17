@@ -1,0 +1,6 @@
+# Antibiogram Dataset Configuration for YOLOv9
+path: c:/Tugas Akhir Palti/Tugas-Akhir-Antibiogram/dataset/yolo_format
+train: c:/Tugas Akhir Palti/Tugas-Akhir-Antibiogram/dataset/yolo_format/images/train
+val: c:/Tugas Akhir Palti/Tugas-Akhir-Antibiogram/dataset/yolo_format/images/val
+nc: 2
+names: ['ab disk', 'inhibition zone']

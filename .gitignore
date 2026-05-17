@@ -1,0 +1,57 @@
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Node / Vite
+node_modules/
+build/
+dist/
+*.tsbuildinfo
+
+# Python
+.venv/
+.venv-*/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Android / Gradle generated files
+**/.gradle/
+**/build/
+**/local.properties
+**/*.apk
+**/*.aab
+**/*.ap_
+**/*.dex
+**/*.class
+**/*.hprof
+**/captures/
+**/.externalNativeBuild/
+**/.cxx/
+**/capacitor-cordova-android-plugins/
+**/app/src/main/assets/public/
+**/app/src/main/assets/capacitor.config.json
+**/app/src/main/assets/capacitor.plugins.json
+**/app/src/main/res/xml/config.xml
+
+# Local IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+
+# Temporary verification / extracted APK folders
+tmp_apk_*/
+verify_*/
+_rollback_backup_*/
+
+# Research/training data should live outside this production repo
+dataset/
+outputs/
+runs/
+**/runs/
+
+# Large model/export formats are allowed only through Git LFS rules in .gitattributes
