@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+**/scripts/.backend-services.json
 
 # Node / Vite
 node_modules/

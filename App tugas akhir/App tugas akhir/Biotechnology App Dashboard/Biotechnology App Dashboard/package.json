@@ -83,6 +83,8 @@
             "android:sync": "vite build && cap sync android",
             "android": "npm run android:sync && cap open android",
             "android:daily": "powershell -ExecutionPolicy Bypass -File ./scripts/android-daily.ps1",
-            "android:daily:noopen": "powershell -ExecutionPolicy Bypass -File ./scripts/android-daily.ps1 -SkipOpen"
+            "android:daily:noopen": "powershell -ExecutionPolicy Bypass -File ./scripts/android-daily.ps1 -SkipOpen",
+            "app:run": "powershell -ExecutionPolicy Bypass -File ./scripts/run-all.ps1 -ForcePortCleanup",
+            "app:run:noopen": "powershell -ExecutionPolicy Bypass -File ./scripts/run-all.ps1 -ForcePortCleanup -SkipOpen"
       }
 }
