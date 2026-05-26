@@ -84,10 +84,23 @@ class YoloAnalyzer:
         self.iou_thres = float(iou_thres)
         self.cuda_available = bool(torch.cuda.is_available())
         self.device = select_device(device)
-        self.model = DetectMultiBackend(str(weights), device=self.device, data=str(data), fp16=False)
+        # Use FP16 (half precision) on CUDA for ~1.5-2x faster inference on modern GPUs.
+        # Falls back to FP32 automatically on CPU inside DetectMultiBackend.
+        use_fp16 = bool(self.device.type == "cuda")
+        self.model = DetectMultiBackend(str(weights), device=self.device, data=str(data), fp16=use_fp16)
+        self.fp16 = bool(getattr(self.model, "fp16", use_fp16))
         self.stride = int(self.model.stride)
         self.img_size = check_img_size(img_size, s=self.stride)
         self.names = self.model.names
+
+        # Warm up the model so the first real request doesn't pay the cuDNN autotune cost.
+        try:
+            warm = torch.zeros((1, 3, self.img_size, self.img_size), device=self.device)
+            warm = warm.half() if self.fp16 else warm.float()
+            with torch.no_grad():
+                self.model(warm)
+        except Exception:
+            pass
 
     def _class_name(self, cls_id: int) -> str:
         if isinstance(self.names, dict):
@@ -312,7 +325,7 @@ class YoloAnalyzer:
         im = np.ascontiguousarray(im)
 
         tensor = torch.from_numpy(im).to(self.device)
-        tensor = tensor.float()
+        tensor = tensor.half() if self.fp16 else tensor.float()
         tensor /= 255.0
         if tensor.ndim == 3:
             tensor = tensor[None]

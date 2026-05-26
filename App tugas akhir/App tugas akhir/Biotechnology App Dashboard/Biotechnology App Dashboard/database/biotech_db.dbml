@@ -1,0 +1,379 @@
+// ========================================
+// Database: Biotechnology Dashboard App
+// Version: 5.0 (Full Schema - No Users Table)
+// Format : DBML (https://dbml.dbdiagram.io/)
+// Source : biotech_db.sql
+// ========================================
+
+Project biotech_dashboard {
+  database_type: 'MySQL'
+  Note: '''
+    # Biotechnology Dashboard Database
+
+    Skema lengkap aplikasi Inhibition Zone (antibiogram).
+    Hierarki utama:
+      Organization
+        ├── OrganizationAdmin   (1 admin per organisasi, login dashboard)
+        ├── OrganizationTeam    (banyak tim per organisasi)
+        │     └── OrganizationMember  (anggota lab, login mobile app)
+        └── Analysis            (hasil uji difusi cakram, milik member)
+              ├── Result        (per-antibiotik measurement, multi-baris)
+              └── FileUpload    (gambar / lampiran)
+
+    Tambahan:
+      - antibiotics             : master katalog antibiotik + threshold CLSI
+      - account_control_*       : super-admin global (Account Control)
+  '''
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+Enum analysis_status {
+  pending
+  processing
+  completed
+  failed
+  archived
+}
+
+Enum interpretation_result {
+  resistant
+  susceptible
+  intermediate
+  indeterminate
+}
+
+Enum account_control_target_type {
+  admin
+  member
+  control
+}
+
+// ============================================================
+// 1. ORGANIZATIONS
+// ============================================================
+Table organizations {
+  id         varchar(50) [pk, note: 'Custom ID (cth: ORG-001)']
+  name       varchar(255) [not null]
+  created_at timestamp    [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp    [default: `CURRENT_TIMESTAMP`, note: 'ON UPDATE CURRENT_TIMESTAMP']
+  is_active  boolean      [default: true]
+
+  Indexes {
+    name      [name: 'idx_organizations_name']
+    is_active [name: 'idx_organizations_active']
+  }
+
+  Note: 'Tenant utama. Semua data lab dimiliki oleh sebuah organization.'
+}
+
+// ============================================================
+// 2. ORGANIZATION ADMINS  (login dashboard web)
+// ============================================================
+Table organization_admins {
+  id              varchar(50) [pk]
+  organization_id varchar(50) [not null, ref: > organizations.id, note: 'ON DELETE CASCADE']
+  username        varchar(100) [not null, unique]
+  password        varchar(255) [not null, note: 'Hashed with bcrypt']
+  created_at      timestamp    [default: `CURRENT_TIMESTAMP`]
+  last_login      timestamp    [null]
+  is_active       boolean      [default: true]
+
+  Indexes {
+    organization_id        [name: 'idx_org_admins_org_id']
+    username               [name: 'idx_org_admins_username']
+    (username, is_active)  [name: 'idx_org_admins_username_active']
+  }
+
+  Note: 'Akun admin tiap organisasi. Mengelola tim, member, dan melihat semua analisis.'
+}
+
+// ============================================================
+// 3. ORGANIZATION TEAMS
+// ============================================================
+Table organization_teams {
+  id              varchar(50) [pk]
+  organization_id varchar(50) [not null, ref: > organizations.id, note: 'ON DELETE CASCADE']
+  name            varchar(100) [not null]
+  created_at      timestamp    [default: `CURRENT_TIMESTAMP`]
+  updated_at      timestamp    [default: `CURRENT_TIMESTAMP`, note: 'ON UPDATE CURRENT_TIMESTAMP']
+
+  Indexes {
+    organization_id        [name: 'idx_org_teams_org_id']
+    (organization_id, name) [unique, name: 'unique_org_team']
+  }
+
+  Note: 'Subgrup di dalam organisasi (cth: Tim Mikrobiologi, Tim QC).'
+}
+
+// ============================================================
+// 4. ORGANIZATION MEMBERS  (login mobile app)
+// ============================================================
+Table organization_members {
+  id              varchar(50) [pk]
+  organization_id varchar(50) [not null, ref: > organizations.id, note: 'ON DELETE CASCADE']
+  team_id         varchar(50) [not null, ref: > organization_teams.id, note: 'ON DELETE CASCADE']
+  username        varchar(100) [not null, unique]
+  password        varchar(255) [not null, note: 'Hashed with bcrypt']
+  created_at      timestamp    [default: `CURRENT_TIMESTAMP`]
+  last_login      timestamp    [null]
+  is_active       boolean      [default: true]
+
+  Indexes {
+    organization_id        [name: 'idx_org_members_org_id']
+    team_id                [name: 'idx_org_members_team_id']
+    username               [name: 'idx_org_members_username']
+    (username, is_active)  [name: 'idx_org_members_username_active']
+  }
+
+  Note: 'Pengguna lapangan (lab technician) yang melakukan foto cawan & upload analisis dari Android.'
+}
+
+// ============================================================
+// 5. ANTIBIOTICS  (master catalog)
+// ============================================================
+Table antibiotics {
+  antibiotic_id        varchar(50)  [pk]
+  name                 varchar(100) [not null, unique]
+  description          text         [null]
+  category             varchar(100) [null, note: 'Beta-lactam, Cephalosporin, Macrolide, dll']
+  standard_dosage      varchar(100) [null]
+  resistance_threshold decimal(5,2) [null, note: 'mm diameter; <= nilai ini = resistant']
+  sensitive_threshold  decimal(5,2) [null, note: 'mm diameter; >= nilai ini = susceptible']
+  is_active            boolean      [default: true]
+  created_at           timestamp    [default: `CURRENT_TIMESTAMP`]
+  updated_at           timestamp    [default: `CURRENT_TIMESTAMP`, note: 'ON UPDATE CURRENT_TIMESTAMP']
+
+  Indexes {
+    name      [name: 'idx_antibiotics_name']
+    category  [name: 'idx_antibiotics_category']
+    is_active [name: 'idx_antibiotics_active']
+  }
+
+  Note: '''
+    Katalog antibiotik global. Di-seed 25 entry (AB001..AB025).
+    Threshold dipakai untuk interpretasi otomatis hasil zona hambat (CLSI-like).
+  '''
+}
+
+// ============================================================
+// 6. ANALYSES  (hasil uji difusi cakram)
+// ============================================================
+Table analyses {
+  id                  varchar(50) [pk]
+
+  // Ownership (semua nullable -> ON DELETE SET NULL)
+  organization_id     varchar(50) [null, ref: > organizations.id,        note: 'ON DELETE SET NULL']
+  team_id             varchar(50) [null, ref: > organization_teams.id,   note: 'ON DELETE SET NULL']
+  member_id           varchar(50) [null, ref: > organization_members.id, note: 'ON DELETE SET NULL']
+
+  // Reporting / grouping
+  report_group_id     varchar(100) [null, note: 'Kelompokkan beberapa analyses ke 1 laporan']
+  report_display_id   varchar(100) [null]
+  report_name         varchar(200) [null]
+  tags                text         [null, note: 'Tag bebas (CSV / JSON string)']
+
+  // Sample metadata
+  sample_id           varchar(100) [null]
+  bacteria_name       varchar(200) [null]
+  specimen_type       varchar(100) [null]
+  test_date           timestamp    [default: `CURRENT_TIMESTAMP`]
+  status              analysis_status [default: 'pending']
+
+  // Inline antibiotic A/B (legacy quick fields)
+  diameter            decimal(5,2) [null]
+  antibiotic_a        varchar(100) [null]
+  antibiotic_a_desc   text         [null]
+  antibiotic_a_result interpretation_result [null]
+  antibiotic_b        varchar(100) [null]
+  antibiotic_b_desc   text         [null]
+  antibiotic_b_result interpretation_result [null]
+
+  // Images (base64) - LONGTEXT
+  original_image      longtext [null, note: 'Base64-encoded raw image']
+  processed_image     longtext [null, note: 'Base64-encoded annotated/homography output']
+
+  // Misc
+  notes               text         [null]
+  technician          varchar(100) [null]
+
+  created_at          timestamp    [default: `CURRENT_TIMESTAMP`]
+  updated_at          timestamp    [default: `CURRENT_TIMESTAMP`, note: 'ON UPDATE CURRENT_TIMESTAMP']
+
+  Indexes {
+    organization_id  [name: 'idx_analyses_org_id']
+    team_id          [name: 'idx_analyses_team_id']
+    member_id        [name: 'idx_analyses_member_id']
+    report_group_id  [name: 'idx_analyses_report_group_id']
+    status           [name: 'idx_analyses_status']
+    created_at       [name: 'idx_analyses_created_at']
+  }
+
+  Note: '''
+    Tabel inti. Tiap baris = satu sampel uji yang dianalisis.
+    Field antibiotic_a / antibiotic_b adalah ringkasan cepat (legacy);
+    detail per-antibiotik yang lebih lengkap disimpan di tabel `results`.
+  '''
+}
+
+// ============================================================
+// 7. RESULTS  (1 analysis -> N results, satu per antibiotik)
+// ============================================================
+Table results {
+  result_id          varchar(50) [pk]
+  analysis_id        varchar(50) [not null, ref: > analyses.id,    note: 'ON DELETE CASCADE']
+  antibiotic_id      varchar(50) [not null, ref: > antibiotics.antibiotic_id, note: 'ON DELETE RESTRICT']
+  measured_diameter  decimal(5,2) [not null, note: 'Diameter zona hambat (mm)']
+  interpretation     interpretation_result [not null]
+  confidence         decimal(5,2) [null, note: 'AI confidence 0-100']
+  zone_image         longtext     [null, note: 'Base64 crop area zona hambat']
+  measured_at        timestamp    [default: `CURRENT_TIMESTAMP`]
+  notes              text         [null]
+
+  Indexes {
+    analysis_id   [name: 'idx_results_analysis_id']
+    antibiotic_id [name: 'idx_results_antibiotic_id']
+  }
+
+  Note: 'Detail terukur per antibiotik. Cascade saat analyses dihapus.'
+}
+
+// ============================================================
+// 8. FILE UPLOADS
+// ============================================================
+Table file_uploads {
+  id              varchar(50) [pk]
+  organization_id varchar(50) [null, ref: > organizations.id,        note: 'ON DELETE SET NULL']
+  member_id       varchar(50) [null, ref: > organization_members.id, note: 'ON DELETE SET NULL']
+  analysis_id     varchar(50) [null, ref: > analyses.id,             note: 'ON DELETE SET NULL']
+  file_name       varchar(255) [not null, note: 'Nama tersimpan di server']
+  original_name   varchar(255) [not null, note: 'Nama asli upload']
+  file_path       varchar(500) [not null]
+  file_size       int          [null, note: 'Bytes']
+  mime_type       varchar(100) [null]
+  file_type       varchar(50)  [null, note: 'original, processed, zone_crop, attachment']
+  uploaded_at     timestamp    [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    organization_id [name: 'idx_file_uploads_org_id']
+    member_id       [name: 'idx_file_uploads_member_id']
+    analysis_id     [name: 'idx_file_uploads_analysis_id']
+  }
+
+  Note: 'Catatan file fisik (image, attachment) milik analisis.'
+}
+
+// ============================================================
+// 9. ACCOUNT CONTROL AUDIT LOGS
+// ============================================================
+Table account_control_audit_logs {
+  id                bigint       [pk, increment, note: 'BIGINT UNSIGNED AUTO_INCREMENT']
+  actor_username    varchar(100) [not null, note: 'Pelaku tindakan']
+  action            varchar(100) [not null, note: 'create_admin, disable_member, reset_password, dst.']
+  target_type       account_control_target_type [not null]
+  target_id         varchar(50)  [null]
+  target_username   varchar(100) [null]
+  organization_id   varchar(50)  [null, ref: > organizations.id, note: 'ON DELETE SET NULL']
+  payload_json      longtext     [null, note: 'Snapshot perubahan (JSON)']
+  ip_address        varchar(45)  [null, note: 'IPv4/IPv6']
+  created_at        timestamp    [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    actor_username  [name: 'idx_account_control_actor']
+    target_type     [name: 'idx_account_control_target_type']
+    created_at      [name: 'idx_account_control_created_at']
+    organization_id [name: 'idx_account_control_org_id']
+  }
+
+  Note: 'Audit trail super-admin (Account Control).'
+}
+
+// ============================================================
+// 9.5 ACCOUNT CONTROL CREDENTIALS (single row, id=1)
+// ============================================================
+Table account_control_credentials {
+  id            tinyint      [pk, note: 'Selalu 1 (single-row table)']
+  username      varchar(100) [not null]
+  password_hash varchar(255) [not null]
+  token_secret  varchar(255) [not null, note: 'Rahasia untuk sign JWT/session token']
+  created_at    timestamp    [default: `CURRENT_TIMESTAMP`]
+  updated_at    timestamp    [default: `CURRENT_TIMESTAMP`, note: 'ON UPDATE CURRENT_TIMESTAMP']
+
+  Note: 'Kredensial super-admin global. Konvensi: hanya 1 baris dengan id=1.'
+}
+
+// ============================================================
+// SOFT REFERENCES (visual-only di ERD, TIDAK di-enforce di SQL)
+// ============================================================
+// account_control_audit_logs.actor_username adalah polymorphic:
+//   - Bisa berisi username dari account_control_credentials (super-admin)
+//   - Atau username dari organization_admins / organization_members
+// Karena itu di SQL aslinya tidak ada FOREIGN KEY.
+// Garis di bawah ini hanya untuk menunjukkan hubungan logis di ERD.
+
+Ref soft_audit_actor_super_admin {
+  account_control_audit_logs.actor_username > account_control_credentials.username
+}
+
+Ref soft_audit_actor_org_admin {
+  account_control_audit_logs.actor_username > organization_admins.username
+}
+
+Ref soft_audit_target_org_admin {
+  account_control_audit_logs.target_username > organization_admins.username
+}
+
+Ref soft_audit_target_org_member {
+  account_control_audit_logs.target_username > organization_members.username
+}
+
+// ============================================================
+// 10. VIEWS (dokumentasi - tidak di-render sebagai tabel relasi)
+// ============================================================
+// VIEW v_org_account_summary
+//   SELECT o.id, o.name,
+//          SUM(a.is_active) AS active_admins,
+//          SUM(m.is_active) AS active_members,
+//          COUNT(DISTINCT t.id) AS total_teams
+//   FROM organizations o
+//   LEFT JOIN organization_admins  a ON a.organization_id = o.id
+//   LEFT JOIN organization_teams   t ON t.organization_id = o.id
+//   LEFT JOIN organization_members m ON m.organization_id = o.id
+//   GROUP BY o.id;
+//
+// VIEW v_recent_analyses
+//   SELECT a.id, a.organization_id, o.name AS organization_name,
+//          a.member_id, m.username AS member_username,
+//          a.bacteria_name,
+//          a.antibiotic_a, a.antibiotic_a_result,
+//          a.antibiotic_b, a.antibiotic_b_result,
+//          a.status, a.created_at
+//   FROM analyses a
+//   LEFT JOIN organizations         o ON a.organization_id = o.id
+//   LEFT JOIN organization_members  m ON a.member_id       = m.id
+//   ORDER BY a.created_at DESC;
+
+// ============================================================
+// TABLE GROUPS (untuk dbdiagram.io layout)
+// ============================================================
+
+TableGroup tenant {
+  organizations
+  organization_admins
+  organization_teams
+  organization_members
+}
+
+TableGroup lab_data {
+  analyses
+  results
+  file_uploads
+  antibiotics
+}
+
+TableGroup super_admin {
+  account_control_credentials
+  account_control_audit_logs
+}

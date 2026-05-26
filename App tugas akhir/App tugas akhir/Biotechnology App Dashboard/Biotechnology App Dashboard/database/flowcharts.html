@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Inhibition Zone App — All Flowcharts</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    max-width: 2400px;
+    margin: 0 auto;
+    padding: 32px;
+    background: #fafafa;
+    color: #111;
+  }
+  .landscape {
+    /* Lebar penuh agar diagram LR tidak terpotong saat di-screenshot */
+    width: 100%;
+  }
+  .landscape .mermaid { min-width: 1800px; }
+  h1 { border-bottom: 3px solid #1E40AF; padding-bottom: 12px; }
+  h2 {
+    margin-top: 48px;
+    padding: 12px 16px;
+    background: #1E40AF;
+    color: #fff;
+    border-radius: 6px;
+  }
+  .diagram {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow-x: auto;
+  }
+  .mermaid { text-align: center; }
+  .note {
+    background: #FEF9C3;
+    border-left: 4px solid #A16207;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    h2 { background: #1E40AF !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .diagram { page-break-inside: avoid; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Inhibition Zone App — Mermaid Flowcharts</h1>
+<p>Dokumentasi alur lengkap aplikasi (Mobile + Dashboard + AI Services + MySQL).<br>
+Tekan <b>Ctrl+P</b> untuk simpan sebagai PDF, atau gunakan extension screenshot full-page.</p>
+
+<h2>1. Arsitektur Sistem</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    classDef client fill:#DBEAFE,stroke:#1E40AF,stroke-width:2px,color:#1E3A8A
+    classDef api    fill:#FEF3C7,stroke:#B45309,stroke-width:2px,color:#78350F
+    classDef pyai   fill:#DCFCE7,stroke:#15803D,stroke-width:2px,color:#14532D
+    classDef db     fill:#FCE7F3,stroke:#9D174D,stroke-width:2px,color:#831843
+    classDef model  fill:#E9D5FF,stroke:#6B21A8,stroke-width:2px,color:#581C87
+
+    subgraph Client["CLIENT LAYER"]
+        Mobile["Mobile App<br/>(Android, Capacitor 7)"]
+        Web["Web Dashboard<br/>(React 18, Vite)"]
+    end
+
+    subgraph Backend["BACKEND SERVICES"]
+        PHP["PHP API<br/>XAMPP :80<br/>/biotech-api/*"]
+        HOMO["Homography<br/>FastAPI :8000<br/>POST /homography"]
+        YOLO["YOLO Service<br/>FastAPI :9000<br/>POST /yolo/analyze"]
+    end
+
+    subgraph Storage["DATA LAYER"]
+        DB[("MySQL 8<br/>biotech_dashboard")]
+    end
+
+    subgraph AI["AI MODEL"]
+        Weights[["best.pt<br/>(YOLOv9 custom)"]]
+        Yaml[["antibiogram.yaml"]]
+    end
+
+    Mobile -- "Login / CRUD JSON" --> PHP
+    Web    -- "Login / CRUD JSON" --> PHP
+    Mobile -- "Image" --> HOMO
+    Mobile -- "Image" --> YOLO
+    Web    -- "Image" --> HOMO
+    Web    -- "Image" --> YOLO
+    PHP -- "PDO SQL" --> DB
+    YOLO -. "load on start" .-> Weights
+    YOLO -. "load on start" .-> Yaml
+
+    class Mobile,Web client
+    class PHP api
+    class HOMO,YOLO pyai
+    class DB db
+    class Weights,Yaml model
+</pre></div>
+
+<h2>2. Alur Login (3 Tipe User)</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+    classDef st fill:#E0F2FE,stroke:#0369A1,color:#0C4A6E
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+    classDef action fill:#DCFCE7,stroke:#15803D,color:#14532D
+    classDef errc fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef done fill:#E9D5FF,stroke:#6B21A8,color:#581C87
+
+    Start([User buka aplikasi]):::st
+    Pick{Pilih tipe login}:::decide
+
+    Start --> Pick
+    Pick -- "Member (mobile)" --> ML[POST /auth/member-login]:::action
+    Pick -- "Admin (dashboard)" --> AL[POST /auth/admin-login]:::action
+    Pick -- "Account Control (super-admin)" --> CL[POST /auth/account-control-login]:::action
+
+    ML --> M1{username aktif?<br/>password cocok bcrypt?}:::decide
+    M1 -- Tidak --> MF[401 Unauthorized]:::errc
+    M1 -- Ya --> M2[UPDATE last_login<br/>JOIN organizations + teams]:::action
+    M2 --> M3[Return: member, org, team]:::action
+
+    AL --> A1{username aktif?<br/>password cocok bcrypt?}:::decide
+    A1 -- Tidak --> AF[401 Unauthorized]:::errc
+    A1 -- Ya --> A2[UPDATE last_login<br/>Fetch teams + members]:::action
+    A2 --> A3[Return: admin, teams, members]:::action
+
+    CL --> C1{cek account_control_credentials<br/>id=1}:::decide
+    C1 -- Tidak cocok --> CF[401 Unauthorized]:::errc
+    C1 -- Cocok --> C2[Sign JWT pakai token_secret]:::action
+    C2 --> C3[Return: control token]:::action
+
+    M3 --> Save[Save ke localStorage<br/>biotech.session.v1]:::action
+    A3 --> Save
+    C3 --> Save
+    Save --> Done([Redirect ke dashboard sesuai role]):::done
+</pre></div>
+
+<h2>3. Alur Utama — Capture & Analyze (Member Mobile)</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    classDef ui fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef py fill:#DCFCE7,stroke:#15803D,color:#14532D
+    classDef php fill:#FEF3C7,stroke:#B45309,color:#78350F
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+    classDef errc fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef done fill:#E9D5FF,stroke:#6B21A8,color:#581C87
+
+    A([Member buka halaman Camera]):::ui
+    B[Capacitor Camera<br/>ambil foto / pilih file]:::ui
+    C{Tilt sensor &lt; 15 derajat?}:::decide
+    C2[Warning: pegang lurus]:::errc
+    D[POST /homography]:::py
+
+    A --> B --> C
+    C -- Tidak --> C2 --> B
+    C -- Ya --> D --> E[pipeline.process_image_bytes]:::py
+
+    subgraph Homog["HOMOGRAPHY PIPELINE (pipeline.py)"]
+        direction TB
+        H1[decode_image_bytes_to_rgb] --> H2[resize_rgb max_side=1600]
+        H2 --> H3[polarization_filter_remove_reflection]
+        H3 --> H4[bilateral_unsharp]
+        H4 --> H5[detect_glare_mask + inpaint_glare]
+        H5 --> H6[estimate_seed_ellipse]
+        H6 --> H7[fit_disk_active_contours]
+        H7 --> H8[homography_from_fitted_ellipse]
+        H8 --> H9[apply_homography_warp]
+    end
+
+    E --> Homog --> F{x-homography-ok = 1?}:::decide
+    F -- Tidak --> G[Pakai gambar asli]:::errc
+    F -- Ya --> H[Pakai gambar rectified]:::ui
+    G --> I
+    H --> I[POST /yolo/analyze]:::py
+    I --> J[YoloAnalyzer.analyze]:::py
+
+    subgraph YoloPipe["YOLO INFERENCE (yolo_inference.py)"]
+        direction TB
+        Y1[Letterbox 640x640] --> Y2[Forward YOLOv9 FP16]
+        Y2 --> Y3[NMS conf=0.25 iou=0.45]
+        Y3 --> Y4[Scale boxes ke ukuran asli]
+        Y4 --> Y5[Pisah disk vs inhibition_zone]
+        Y5 --> Y6[Matching disk-zone<br/>ratio 1.12 - 7.5]
+        Y6 --> Y7[diameter_mm = zone_px * disk_mm/disk_px]
+        Y7 --> Y8[Annotate gambar + badge]
+    end
+
+    J --> YoloPipe --> K[Return JSON:<br/>measurements, detections,<br/>processedImage base64]:::py
+    K --> L[Frontend preview + form metadata]:::ui
+    L --> M[Interpretasi diameter vs threshold]:::ui
+    M --> N[POST /analyses to PHP API]:::php
+    N --> O[INSERT INTO analyses<br/>status=completed]:::php
+    O --> P[(MySQL: row baru)]:::php
+    P --> Q([Tampilkan hasil + AnalysisDetail]):::done
+</pre></div>
+
+<h2>4. Interpretasi Hasil (Threshold CLSI)</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+    classDef st fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+    classDef R fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef I fill:#FED7AA,stroke:#C2410C,color:#7C2D12
+    classDef S fill:#DCFCE7,stroke:#15803D,color:#14532D
+    classDef X fill:#E5E7EB,stroke:#374151,color:#111827
+
+    A([YOLO measurement.diameter_mm]):::st
+    B{Zone terdeteksi?}:::decide
+    A --> B
+    B -- Tidak ada zone --> R0[RESISTANT<br/>zona = 0 mm]:::R
+    B -- Ya --> C[Lookup antibiotics:<br/>resistance_threshold<br/>sensitive_threshold]:::st
+    C --> D{diameter_mm &lt;= resistance_threshold?}:::decide
+    D -- Ya --> RR[RESISTANT]:::R
+    D -- Tidak --> E{diameter_mm &gt;= sensitive_threshold?}:::decide
+    E -- Ya --> SS[SUSCEPTIBLE]:::S
+    E -- Tidak --> II[INTERMEDIATE]:::I
+    R0 --> Save[Simpan ke<br/>analyses.antibiotic_a_result<br/>atau antibiotic_b_result]:::X
+    RR --> Save
+    SS --> Save
+    II --> Save
+</pre></div>
+
+<h2>5. Dashboard Admin</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+    classDef ui fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef api fill:#FEF3C7,stroke:#B45309,color:#78350F
+    classDef db fill:#FCE7F3,stroke:#9D174D,color:#831843
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+
+    Start([Admin login berhasil]):::ui
+    Menu{Pilih menu}:::decide
+    Start --> Menu
+
+    Menu -- "Analyses list" --> A1["GET /analyses"]:::api
+    A1 --> A2[("SELECT FROM analyses<br/>WHERE organization_id")]:::db
+    A2 --> A3[Tampilkan tabel + filter]:::ui
+
+    Menu -- "Detail analysis" --> B1["GET /analyses/AN_XXX"]:::api
+    B1 --> B2[("SELECT WHERE id")]:::db
+    B2 --> B3[Render gambar base64]:::ui
+
+    Menu -- "Edit analysis" --> C1["PUT /analyses/AN_XXX"]:::api
+    C1 --> C2[("UPDATE analyses<br/>SET status, antibiotic")]:::db
+
+    Menu -- "Statistics" --> D1["GET /statistics"]:::api
+    D1 --> D2[("Aggregate COUNT, GROUP BY month")]:::db
+    D2 --> D3[Render chart bar/pie/line]:::ui
+
+    Menu -- "Manage teams" --> E1["POST update-team / delete-team"]:::api
+    E1 --> E2[("UPDATE/DELETE organization_teams")]:::db
+
+    Menu -- "Manage members" --> F1["POST create-account"]:::api
+    F1 --> F2[("INSERT organization_members<br/>password bcrypt")]:::db
+
+    Menu -- "Antibiotic catalog" --> G1["GET /antibiotics"]:::api
+    G1 --> G2[("SELECT FROM antibiotics")]:::db
+    G2 --> G3[Tampilkan threshold mm]:::ui
+</pre></div>
+
+<h2>6. Account Control (Super-Admin)</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+    classDef ui fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef api fill:#FEF3C7,stroke:#B45309,color:#78350F
+    classDef db fill:#FCE7F3,stroke:#9D174D,color:#831843
+    classDef audit fill:#E9D5FF,stroke:#6B21A8,color:#581C87
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+
+    L([Login super-admin]):::ui --> T[Dapat JWT token]:::api
+    T --> M{Pilih aksi}:::decide
+
+    M -- "List all" --> L1["POST account-control-list"]:::api
+    L1 --> L2[("JOIN orgs + admins + teams + members")]:::db
+
+    M -- "Create org/admin/member" --> C1["POST create-account"]:::api
+    C1 --> C2[("TRANSACTION<br/>INSERT organizations<br/>INSERT admins, teams, members")]:::db
+
+    M -- "Update org" --> U1["POST update-organization"]:::api
+    U1 --> U2[("UPDATE organizations")]:::db
+
+    M -- "Delete org" --> D1["POST delete-organization"]:::api
+    D1 --> D2[("DELETE organizations")]:::db
+    D2 --> D3[("CASCADE admins/teams/members<br/>SET NULL analyses")]:::db
+
+    M -- "Update team" --> UT1["POST update-team"]:::api
+    UT1 --> UT2[("UPDATE organization_teams")]:::db
+
+    M -- "Delete team" --> DT1["POST delete-team"]:::api
+    DT1 --> DT2[("DELETE organization_teams")]:::db
+
+    L2 --> Audit
+    C2 --> Audit
+    U2 --> Audit
+    D3 --> Audit
+    UT2 --> Audit
+    DT2 --> Audit
+    Audit[("INSERT account_control_audit_logs<br/>actor, action, target, ip")]:::audit
+</pre></div>
+
+<h2>7. Sequence — Member Upload Analysis</h2>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor M as Member (Android)
+    participant App as Mobile App
+    participant H as Homography :8000
+    participant Y as YOLO :9000
+    participant P as PHP API :80
+    participant DB as MySQL
+
+    M->>App: Buka halaman Camera
+    App->>App: Cek tilt sensor kurang dari 15 derajat
+    M->>App: Capture foto petri dish
+
+    App->>+H: POST /homography (multipart image)
+    H->>H: decode, resize, glare removal,<br/>ellipse fit, warp perspective
+    H-->>-App: rectified image + headers ok=1
+
+    alt Homography gagal
+        App->>App: Pakai gambar asli + warning
+    end
+
+    App->>+Y: POST /yolo/analyze (image, disk_mm=6)
+    Y->>Y: letterbox, forward YOLOv9,<br/>NMS, match disk-zone, hitung diameter_mm
+    Y-->>-App: JSON measurements, processedImage
+
+    App->>App: Tampilkan preview + form metadata
+    M->>App: Isi bacteria, antibiotic, sample_id
+    App->>App: Interpretasi R/I/S
+
+    App->>+P: POST /analyses
+    P->>P: generateShortAnalysisId, normalize
+    P->>+DB: INSERT INTO analyses
+    DB-->>-P: row inserted
+    P-->>-App: analysis_id AN_XXX, status completed
+
+    App->>M: Tampilkan AnalysisDetail
+    M->>App: Klik history
+    App->>+P: GET /analyses?member_id
+    P->>+DB: SELECT FROM analyses
+    DB-->>-P: rows
+    P-->>-App: list analyses
+    App->>M: Render history list
+</pre></div>
+
+<h2>8. State Diagram — Siklus Hidup Analysis</h2>
+<div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+    [*] --> pending: POST /analyses
+    pending --> processing: Mulai YOLO inference
+    processing --> completed: Inference sukses
+    processing --> failed: Error
+    completed --> archived: Admin archive
+    failed --> processing: Retry
+    archived --> completed: Restore
+
+    completed --> [*]: DELETE
+    failed --> [*]: DELETE
+    archived --> [*]: DELETE
+
+    note right of completed
+        Field terisi:
+        diameter, antibiotic_a/b_result,
+        original_image, processed_image
+    end note
+
+    note right of failed
+        status=failed
+        Tetap tersimpan untuk audit
+    end note
+</pre></div>
+
+<h2>9. Data Flow — Storage Gambar</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    classDef src fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef proc fill:#DCFCE7,stroke:#15803D,color:#14532D
+    classDef store fill:#FCE7F3,stroke:#9D174D,color:#831843
+    classDef view fill:#FEF3C7,stroke:#B45309,color:#78350F
+
+    Cap[["Kamera ponsel<br/>JPEG 2-4 MB"]]:::src
+
+    subgraph Process["BACKEND PROCESSING"]
+        Hg["Homography (opsional)<br/>perspective warp"]:::proc
+        Yg["YOLO annotate + badge"]:::proc
+    end
+
+    subgraph Encode["ENCODE"]
+        B64a["base64 encode original"]:::proc
+        B64b["base64 encode processed"]:::proc
+    end
+
+    subgraph DBg["MySQL analyses table"]
+        OI[("original_image<br/>LONGTEXT")]:::store
+        PI[("processed_image<br/>LONGTEXT")]:::store
+    end
+
+    subgraph Render["RENDER UI"]
+        Img1["img src = data:image/jpeg;base64,..."]:::view
+    end
+
+    Cap --> Hg --> Yg --> B64a
+    Cap --> B64a
+    Yg --> B64b
+    B64a --> OI
+    B64b --> PI
+    OI --> Img1
+    PI --> Img1
+</pre></div>
+
+<h2>10. Entity-Relationship Diagram</h2>
+<div class="diagram"><pre class="mermaid">
+erDiagram
+    organizations ||--o{ organization_admins  : "punya"
+    organizations ||--o{ organization_teams   : "punya"
+    organizations ||--o{ organization_members : "punya"
+    organizations ||--o{ analyses             : "memiliki"
+    organization_teams   ||--o{ organization_members : "berisi"
+    organization_teams   ||--o{ analyses             : "atribusi"
+    organization_members ||--o{ analyses             : "membuat"
+    analyses     ||--o{ results       : "menghasilkan"
+    analyses     ||--o{ file_uploads  : "lampiran"
+    antibiotics  ||--o{ results       : "digunakan"
+    organizations ||--o{ account_control_audit_logs : "audit"
+
+    organizations {
+        varchar id PK
+        varchar name
+        boolean is_active
+    }
+    organization_admins {
+        varchar id PK
+        varchar organization_id FK
+        varchar username UK
+        varchar password
+    }
+    organization_teams {
+        varchar id PK
+        varchar organization_id FK
+        varchar name
+    }
+    organization_members {
+        varchar id PK
+        varchar organization_id FK
+        varchar team_id FK
+        varchar username UK
+        varchar password
+    }
+    antibiotics {
+        varchar antibiotic_id PK
+        varchar name UK
+        decimal resistance_threshold
+        decimal sensitive_threshold
+    }
+    analyses {
+        varchar id PK
+        varchar organization_id FK
+        varchar team_id FK
+        varchar member_id FK
+        enum status
+        decimal diameter
+        enum antibiotic_a_result
+        enum antibiotic_b_result
+        longtext original_image
+        longtext processed_image
+    }
+    results {
+        varchar result_id PK
+        varchar analysis_id FK
+        varchar antibiotic_id FK
+        decimal measured_diameter
+        enum interpretation
+    }
+    file_uploads {
+        varchar id PK
+        varchar analysis_id FK
+        varchar file_path
+    }
+    account_control_credentials {
+        tinyint id PK
+        varchar username
+        varchar password_hash
+    }
+    account_control_audit_logs {
+        bigint id PK
+        varchar actor_username
+        varchar action
+        varchar organization_id FK
+    }
+</pre></div>
+
+<h2>11. Use Case Diagram</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    classDef actor fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px
+    classDef uc fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+
+    SA(("Account<br/>Control")):::actor
+    AD(("Admin")):::actor
+    MB(("Member<br/>Lab Tech")):::actor
+
+    UC1[Login]:::uc
+    UC2[Create / Manage<br/>Organization]:::uc
+    UC3[Create / Manage<br/>Admin & Member]:::uc
+    UC4[View Audit Log]:::uc
+    UC5[Manage Teams]:::uc
+    UC6[View All Analyses]:::uc
+    UC7[View Statistics]:::uc
+    UC8[Edit Analysis Result]:::uc
+    UC9[View Antibiotic Catalog]:::uc
+    UC10[Capture Foto Cawan]:::uc
+    UC11[Homography Rectify]:::uc
+    UC12[YOLO Inference]:::uc
+    UC13[Create Analysis]:::uc
+    UC14[View History]:::uc
+
+    SA --> UC1
+    SA --> UC2
+    SA --> UC3
+    SA --> UC4
+    SA --> UC5
+
+    AD --> UC1
+    AD --> UC5
+    AD --> UC6
+    AD --> UC7
+    AD --> UC8
+    AD --> UC9
+
+    MB --> UC1
+    MB --> UC10
+    MB --> UC11
+    MB --> UC12
+    MB --> UC13
+    MB --> UC14
+    MB --> UC9
+
+    UC10 -.includes.-> UC11
+    UC10 -.includes.-> UC12
+    UC12 -.includes.-> UC13
+</pre></div>
+
+<h2>12. User Account Flowchart (Lifecycle Akun)</h2>
+<div class="diagram"><pre class="mermaid">
+flowchart TD
+    classDef st fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef sa fill:#E9D5FF,stroke:#6B21A8,color:#581C87
+    classDef ad fill:#FEF3C7,stroke:#B45309,color:#78350F
+    classDef mb fill:#DCFCE7,stroke:#15803D,color:#14532D
+    classDef db fill:#FCE7F3,stroke:#9D174D,color:#831843
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+    classDef errc fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef done fill:#E0F2FE,stroke:#0369A1,color:#0C4A6E
+
+    Start([Mulai: Sistem terpasang]):::st
+    Seed[(Seed default:<br/>account_control_credentials id=1)]:::db
+    Start --> Seed --> SAL[Account Control login<br/>POST /auth/account-control-login]:::sa
+
+    SAL --> SAOK{Kredensial valid?}:::decide
+    SAOK -- Tidak --> SAFail[401 Unauthorized<br/>+ log audit gagal]:::errc
+    SAOK -- Ya --> SADash[Super-Admin Dashboard<br/>JWT aktif]:::sa
+
+    %% ---- Provisioning oleh Super-Admin ----
+    SADash --> Pick{Aksi provisioning}:::decide
+
+    Pick -- "Buat Organisasi baru" --> NO1[Form: nama org, admin user, password]:::sa
+    NO1 --> NO2[POST /account-control/create-account]:::sa
+    NO2 --> NO3[(TRANSACTION:<br/>INSERT organizations<br/>INSERT organization_admins<br/>password = bcrypt)]:::db
+    NO3 --> NO4[(INSERT audit_logs:<br/>action=create_org)]:::db
+    NO4 --> AdminReady[Admin account aktif]:::ad
+
+    Pick -- "Tambah Admin ke org" --> AA1[POST create-account<br/>type=admin]:::sa
+    AA1 --> AA2[(INSERT organization_admins)]:::db
+    AA2 --> AdminReady
+
+    Pick -- "Tambah Team" --> TT1[POST create-account<br/>type=team]:::sa
+    TT1 --> TT2[(INSERT organization_teams)]:::db
+    TT2 --> TeamReady[Team siap dipakai]:::ad
+
+    Pick -- "Tambah Member" --> MM1[Form: username, password,<br/>org, team]:::sa
+    MM1 --> MM2[POST create-account<br/>type=member]:::sa
+    MM2 --> MM3[(INSERT organization_members<br/>password = bcrypt<br/>is_active = 1)]:::db
+    MM3 --> MM4[(INSERT audit_logs:<br/>action=create_member)]:::db
+    MM4 --> MemberReady[Member account aktif]:::mb
+
+    %% ---- Login per role ----
+    AdminReady --> ALogin[Admin buka Web Dashboard]:::ad
+    MemberReady --> MLogin[Member buka Mobile App]:::mb
+
+    ALogin --> AL1[POST /auth/admin-login]:::ad
+    AL1 --> AL2{username aktif<br/>+ bcrypt cocok?}:::decide
+    AL2 -- Tidak --> AL3[401 + tampil error]:::errc
+    AL2 -- Ya --> AL4[(UPDATE last_login)]:::db
+    AL4 --> AL5[Save session<br/>biotech.session.v1]:::ad
+    AL5 --> AHome[Dashboard Admin]:::ad
+
+    MLogin --> ML1[POST /auth/member-login]:::mb
+    ML1 --> ML2{username aktif<br/>+ bcrypt cocok?}:::decide
+    ML2 -- Tidak --> ML3[401 + tampil error]:::errc
+    ML2 -- Ya --> ML4[(UPDATE last_login<br/>JOIN org + team)]:::db
+    ML4 --> ML5[Save session<br/>biotech.session.v1]:::mb
+    ML5 --> MHome[Halaman Camera + History]:::mb
+
+    %% ---- Pengelolaan akun runtime ----
+    AHome --> AMgmt{Aksi admin}:::decide
+    AMgmt -- "Kelola team / member" --> AM1[POST update-team /<br/>create-account / delete-team]:::ad
+    AM1 --> AM2[(UPDATE / INSERT / DELETE<br/>+ audit_logs)]:::db
+    AM2 --> AHome
+    AMgmt -- "Lihat analyses + statistik" --> AM3[GET /analyses, /statistics]:::ad
+    AM3 --> AHome
+
+    MHome --> MMgmt{Aksi member}:::decide
+    MMgmt -- "Ganti password" --> MP1[POST /auth/change-password]:::mb
+    MP1 --> MP2{password lama cocok?}:::decide
+    MP2 -- Tidak --> MP3[Error 400]:::errc --> MHome
+    MP2 -- Ya --> MP4[(UPDATE password<br/>= bcrypt baru)]:::db
+    MP4 --> MHome
+    MMgmt -- "Capture + analisis" --> MA1[Lihat Flowchart 3]:::mb --> MHome
+    MMgmt -- "Logout" --> MO1[Clear localStorage]:::mb --> MLogin
+
+    %% ---- Deaktivasi / Hapus ----
+    SADash --> Del{Lifecycle akhir}:::decide
+    Del -- "Nonaktifkan member" --> D1[POST update-member<br/>is_active=0]:::sa
+    D1 --> D2[(UPDATE organization_members)]:::db
+    D2 --> Dx[Login member ditolak]:::errc
+
+    Del -- "Hapus organisasi" --> DO1[POST delete-organization]:::sa
+    DO1 --> DO2[(DELETE organizations<br/>CASCADE admins/teams/members<br/>SET NULL analyses)]:::db
+    DO2 --> DO3[(INSERT audit_logs:<br/>action=delete_org)]:::db
+    DO3 --> End([Akun-akun terkait dihapus]):::done
+
+    Del -- "Reset password user" --> R1[POST reset-password]:::sa
+    R1 --> R2[(UPDATE password = bcrypt baru)]:::db
+    R2 --> R3[Notif ke user]:::done
+</pre></div>
+
+<h2>13. User Account — Member (Lab Technician)</h2>
+<div class="diagram landscape"><pre class="mermaid">
+flowchart LR
+    classDef st fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef mb fill:#DCFCE7,stroke:#15803D,color:#14532D
+    classDef api fill:#FEF3C7,stroke:#B45309,color:#78350F
+    classDef db fill:#FCE7F3,stroke:#9D174D,color:#831843
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+    classDef errc fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef done fill:#E0F2FE,stroke:#0369A1,color:#0C4A6E
+
+    Start([Member dibuat oleh Admin/Super-Admin]):::st
+    Start --> Prov[(INSERT organization_members<br/>username, password=bcrypt,<br/>organization_id, team_id,<br/>is_active=1)]:::db
+    Prov --> Ready[Akun Member aktif]:::mb
+
+    Ready --> Open[Member buka Mobile App<br/>Android Capacitor]:::mb
+    Open --> Form[Input username + password]:::mb
+    Form --> Login[POST /auth/member-login]:::api
+    Login --> Chk{is_active=1<br/>+ bcrypt password cocok?}:::decide
+    Chk -- Tidak --> Err[401 Unauthorized<br/>Tampil error di app]:::errc
+    Err --> Form
+    Chk -- Ya --> Upd[(UPDATE last_login<br/>JOIN organizations + teams)]:::db
+    Upd --> Resp[Response: member, org, team]:::api
+    Resp --> Save[Simpan session<br/>localStorage biotech.session.v1]:::mb
+    Save --> Home[Halaman utama Mobile<br/>Camera + History]:::mb
+
+    Home --> Act{Aktivitas member}:::decide
+    Act -- "Capture + Analisis" --> A1[Lihat Flowchart 3<br/>Homography + YOLO + INSERT analyses]:::mb
+    A1 --> Home
+    Act -- "Lihat History" --> A2[GET /analyses?member_id]:::api
+    A2 --> A3[(SELECT analyses<br/>WHERE member_id)]:::db --> Home
+    Act -- "Ganti Password" --> P1[POST /auth/change-password]:::api
+    P1 --> P2{password lama cocok?}:::decide
+    P2 -- Tidak --> P3[400 Bad Request]:::errc --> Home
+    P2 -- Ya --> P4[(UPDATE password = bcrypt baru)]:::db --> Home
+    Act -- "Update profil" --> U1[POST /members/update-profile]:::api
+    U1 --> U2[(UPDATE name, email, phone)]:::db --> Home
+    Act -- "Logout" --> L1[Clear localStorage]:::mb --> Form
+
+    %% Lifecycle akhir
+    Home --> End{Aksi admin pada akun ini}:::decide
+    End -- "Dinonaktifkan" --> D1[(UPDATE is_active=0)]:::db
+    D1 --> D2[Login berikutnya ditolak]:::errc
+    End -- "Dihapus" --> D3[(DELETE organization_members<br/>analyses.member_id = NULL)]:::db
+    D3 --> Done([Akun member berakhir]):::done
+</pre></div>
+
+<h2>14. User Account — Admin (Organization Admin)</h2>
+<div class="diagram landscape"><pre class="mermaid">
+flowchart LR
+    classDef st fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef ad fill:#FEF3C7,stroke:#B45309,color:#78350F
+    classDef api fill:#FDE68A,stroke:#92400E,color:#78350F
+    classDef db fill:#FCE7F3,stroke:#9D174D,color:#831843
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+    classDef errc fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef done fill:#E0F2FE,stroke:#0369A1,color:#0C4A6E
+
+    Start([Admin dibuat oleh Account Control]):::st
+    Start --> Prov[(TRANSACTION:<br/>INSERT organizations<br/>INSERT organization_admins<br/>password=bcrypt, is_active=1)]:::db
+    Prov --> Audit1[(INSERT audit_logs:<br/>action=create_admin)]:::db
+    Audit1 --> Ready[Akun Admin aktif]:::ad
+
+    Ready --> Open[Buka Web Dashboard<br/>React + Vite]:::ad
+    Open --> Form[Input username + password]:::ad
+    Form --> Login[POST /auth/admin-login]:::api
+    Login --> Chk{is_active=1<br/>+ bcrypt cocok?}:::decide
+    Chk -- Tidak --> Err[401 Unauthorized]:::errc --> Form
+    Chk -- Ya --> Upd[(UPDATE last_login<br/>fetch teams + members)]:::db
+    Upd --> Resp[Response: admin, teams, members]:::api
+    Resp --> Save[Simpan session<br/>biotech.session.v1]:::ad
+    Save --> Home[Dashboard Admin<br/>scope = organization_id]:::ad
+
+    Home --> Act{Menu admin}:::decide
+
+    Act -- "Kelola Team" --> T1[POST update-team /<br/>create-team / delete-team]:::api
+    T1 --> T2[(INSERT/UPDATE/DELETE<br/>organization_teams)]:::db --> Home
+
+    Act -- "Kelola Member" --> M1[POST create-account / update-member /<br/>delete-member]:::api
+    M1 --> M2[(INSERT/UPDATE/DELETE<br/>organization_members<br/>password=bcrypt)]:::db --> Home
+
+    Act -- "Reset password member" --> RP1[POST reset-password]:::api
+    RP1 --> RP2[(UPDATE password=bcrypt baru)]:::db --> Home
+
+    Act -- "Lihat Analyses" --> AN1[GET /analyses<br/>WHERE organization_id]:::api
+    AN1 --> AN2[(SELECT analyses)]:::db --> Home
+
+    Act -- "Edit / Archive Analysis" --> EA1[PUT /analyses/AN_XXX]:::api
+    EA1 --> EA2[(UPDATE status, antibiotic_result)]:::db --> Home
+
+    Act -- "Statistik" --> S1[GET /statistics]:::api
+    S1 --> S2[(Aggregate COUNT, GROUP BY)]:::db --> Home
+
+    Act -- "Antibiotic Catalog" --> C1[GET /antibiotics]:::api
+    C1 --> C2[(SELECT antibiotics)]:::db --> Home
+
+    Act -- "Ganti Password Sendiri" --> P1[POST /auth/change-password]:::api
+    P1 --> P2{password lama cocok?}:::decide
+    P2 -- Tidak --> P3[400 Bad Request]:::errc --> Home
+    P2 -- Ya --> P4[(UPDATE password=bcrypt)]:::db --> Home
+
+    Act -- "Logout" --> L1[Clear localStorage]:::ad --> Form
+
+    %% Lifecycle akhir
+    Home --> End{Aksi Account Control}:::decide
+    End -- "Nonaktifkan admin" --> D1[(UPDATE is_active=0)]:::db
+    D1 --> Dx[Login berikutnya ditolak]:::errc
+    End -- "Hapus admin" --> D2[(DELETE organization_admins)]:::db
+    D2 --> Audit2[(INSERT audit_logs:<br/>action=delete_admin)]:::db
+    Audit2 --> Done([Akun admin berakhir]):::done
+</pre></div>
+
+<h2>15. User Account — Account Control (Super-Admin)</h2>
+<div class="diagram landscape"><pre class="mermaid">
+flowchart LR
+    classDef st fill:#DBEAFE,stroke:#1E40AF,color:#1E3A8A
+    classDef sa fill:#E9D5FF,stroke:#6B21A8,color:#581C87
+    classDef api fill:#DDD6FE,stroke:#5B21B6,color:#4C1D95
+    classDef db fill:#FCE7F3,stroke:#9D174D,color:#831843
+    classDef audit fill:#FDE68A,stroke:#92400E,color:#78350F
+    classDef decide fill:#FEF9C3,stroke:#A16207,color:#713F12
+    classDef errc fill:#FEE2E2,stroke:#B91C1C,color:#7F1D1D
+    classDef done fill:#E0F2FE,stroke:#0369A1,color:#0C4A6E
+
+    Start([Sistem deployment awal]):::st
+    Start --> Seed[(Seed default:<br/>account_control_credentials id=1<br/>username + password_hash bcrypt<br/>token_secret untuk JWT)]:::db
+    Seed --> Ready[Akun Account Control aktif<br/>tunggal, super-admin]:::sa
+
+    Ready --> Open[Buka halaman khusus<br/>Account Control Login]:::sa
+    Open --> Form[Input username + password]:::sa
+    Form --> Login[POST /auth/account-control-login]:::api
+    Login --> Chk{cek account_control_credentials<br/>id=1, bcrypt cocok?}:::decide
+    Chk -- Tidak --> Err[401 Unauthorized<br/>+ audit log gagal]:::errc --> Form
+    Chk -- Ya --> Sign[Sign JWT pakai token_secret<br/>exp = N jam]:::api
+    Sign --> Save[Simpan token di session<br/>+ kirim Authorization header]:::sa
+    Save --> Home[Super-Admin Dashboard<br/>scope = SEMUA organisasi]:::sa
+
+    Home --> Act{Menu super-admin}:::decide
+
+    Act -- "List semua" --> L1[POST /account-control/list]:::api
+    L1 --> L2[(JOIN organizations + admins<br/>+ teams + members)]:::db --> Home
+
+    Act -- "Buat Organisasi + Admin" --> CO1[POST create-account<br/>type=organization]:::api
+    CO1 --> CO2[(TRANSACTION:<br/>INSERT organizations<br/>INSERT organization_admins<br/>password=bcrypt)]:::db
+    CO2 --> CO3[(INSERT audit_logs:<br/>action=create_org)]:::audit --> Home
+
+    Act -- "Tambah Admin / Team / Member" --> CA1[POST create-account<br/>type=admin/team/member]:::api
+    CA1 --> CA2[(INSERT row sesuai tipe<br/>password=bcrypt jika user)]:::db
+    CA2 --> CA3[(INSERT audit_logs)]:::audit --> Home
+
+    Act -- "Update Organisasi" --> UO1[POST update-organization]:::api
+    UO1 --> UO2[(UPDATE organizations)]:::db
+    UO2 --> UO3[(INSERT audit_logs:<br/>action=update_org)]:::audit --> Home
+
+    Act -- "Update Team" --> UT1[POST update-team]:::api
+    UT1 --> UT2[(UPDATE organization_teams)]:::db
+    UT2 --> UT3[(INSERT audit_logs)]:::audit --> Home
+
+    Act -- "Reset / Update password user" --> RP1[POST reset-password]:::api
+    RP1 --> RP2[(UPDATE password=bcrypt baru<br/>di admins/members)]:::db
+    RP2 --> RP3[(INSERT audit_logs:<br/>action=reset_password)]:::audit --> Home
+
+    Act -- "Nonaktifkan akun" --> DA1[POST update-member /<br/>update-admin]:::api
+    DA1 --> DA2[(UPDATE is_active=0)]:::db
+    DA2 --> DA3[(INSERT audit_logs)]:::audit --> Home
+
+    Act -- "Hapus Team" --> DT1[POST delete-team]:::api
+    DT1 --> DT2[(DELETE organization_teams)]:::db
+    DT2 --> DT3[(INSERT audit_logs)]:::audit --> Home
+
+    Act -- "Hapus Organisasi" --> DO1[POST delete-organization]:::api
+    DO1 --> DO2[(DELETE organizations<br/>CASCADE admins/teams/members<br/>SET NULL analyses)]:::db
+    DO2 --> DO3[(INSERT audit_logs:<br/>action=delete_org)]:::audit --> Home
+
+    Act -- "Lihat Audit Log" --> AL1[GET /account-control/audit-logs]:::api
+    AL1 --> AL2[(SELECT account_control_audit_logs<br/>ORDER BY created_at DESC)]:::db --> Home
+
+    Act -- "Ganti password sendiri" --> SP1[POST /account-control/change-password]:::api
+    SP1 --> SP2{password lama cocok?}:::decide
+    SP2 -- Tidak --> SP3[400 Bad Request]:::errc --> Home
+    SP2 -- Ya --> SP4[(UPDATE account_control_credentials<br/>password_hash = bcrypt baru)]:::db
+    SP4 --> SP5[(INSERT audit_logs)]:::audit --> Home
+
+    Act -- "Logout" --> LO[Hapus JWT dari session]:::sa --> Form
+
+    %% Catatan khusus
+    Home --> Note{Catatan keamanan}:::decide
+    Note -- "Akun tunggal, tidak bisa dihapus" --> N1[id=1 wajib selalu ada<br/>reset via DB jika lupa]:::done
+</pre></div>
+
+<div class="note">
+<b>Cara export semua sekali tekan:</b><br>
+1. Buka file ini di Chrome / Edge (double-click)<br>
+2. Tunggu semua diagram ter-render (~3 detik)<br>
+3. <b>Ctrl+P</b> → Destination: <b>Save as PDF</b> → Save<br>
+Atau gunakan extension <i>GoFullPage</i> / <i>Awesome Screenshot</i> untuk screenshot full-page jadi 1 gambar PNG.
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    flowchart: { htmlLabels: true, curve: 'basis' },
+    securityLevel: 'loose'
+  });
+</script>
+
+</body>
+</html>

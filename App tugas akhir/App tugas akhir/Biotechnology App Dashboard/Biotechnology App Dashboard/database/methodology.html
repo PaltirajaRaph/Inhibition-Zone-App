@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagram Alur Penelitian - Inhibition Zone App</title>
+<style>
+  :root {
+    --bg: #f6f4ee;
+    --paper: #fffdf9;
+    --ink: #1f2937;
+    --muted: #5b6472;
+    --border: #d6d3d1;
+    --shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    background:
+      radial-gradient(circle at top left, rgba(250, 204, 21, 0.12), transparent 24%),
+      linear-gradient(180deg, #faf8f2 0%, var(--bg) 100%);
+    color: var(--ink);
+  }
+
+  .page {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 28px 18px 56px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+
+  .header h1 {
+    margin: 0 0 10px;
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    line-height: 1.15;
+  }
+
+  .header p {
+    margin: 0 auto;
+    max-width: 880px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .board {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+
+  .mermaid {
+    min-width: 1380px;
+    text-align: center;
+  }
+
+  .caption {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 1rem;
+    color: #111827;
+  }
+
+  .note {
+    margin: 16px auto 0;
+    max-width: 920px;
+    text-align: center;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  @media print {
+    body {
+      background: #fff;
+    }
+
+    .board {
+      box-shadow: none;
+      border-color: #d1d5db;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page {
+      padding: 18px 10px 36px;
+    }
+
+    .board {
+      padding: 14px;
+      border-radius: 18px;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <h1>Diagram Alur Penelitian Inhibition Zone App</h1>
+      <p>
+        Diagram ini merangkum alur penelitian dan pengembangan sistem untuk aplikasi analisis
+        zona hambat, mulai dari studi kebutuhan, pengembangan modul utama, integrasi layanan,
+        hingga pengujian dan evaluasi hasil.
+      </p>
+    </header>
+
+    <section class="board">
+      <pre class="mermaid">
+flowchart TD
+    classDef terminator fill:#FCD34D,stroke:#4B5563,stroke-width:2px,color:#111827
+    classDef decision fill:#60A5FA,stroke:#1E3A8A,stroke-width:2px,color:#0F172A
+    classDef outer fill:#FFFFFF,stroke:#6B7280,stroke-width:1.6px,color:#111827
+    classDef card fill:#E5E7EB,stroke:#4B5563,stroke-width:1.4px,color:#111827
+    classDef ok fill:#DCFCE7,stroke:#15803D,stroke-width:2px,color:#14532D
+
+    Start([Mulai]):::terminator --> T1
+
+    subgraph T1[Tahap 1: Studi dan Analisis]
+      direction TB
+      L["<b>Pendalaman Literatur</b><br/>1. Metode Kirby-Bauer<br/>2. Computer vision untuk citra petri dish<br/>3. Deteksi objek dengan YOLO"]:::card
+      K["<b>Analisis Kebutuhan</b><br/>1. Mobile app untuk capture dan riwayat<br/>2. Dashboard untuk monitoring dan statistik<br/>3. AI service untuk homography dan inference"]:::card
+      L --> K
+    end
+
+    T1:::outer --> T2
+
+    subgraph T2[Tahap 2: Pengembangan]
+      direction LR
+
+      subgraph A[ ]
+        direction TB
+        A1["<b>A. Pengembangan Aplikasi</b><br/>1. Login multi peran<br/>2. Capture foto dan upload citra<br/>3. History analisis dan detail hasil<br/>4. Dashboard statistik dan manajemen data"]:::card
+      end
+
+      subgraph B[ ]
+        direction TB
+        B1["<b>B. Pengembangan AI Deteksi</b><br/>1. Pengumpulan dan anotasi data<br/>2. Pelatihan model YOLOv9 custom<br/>3. Deteksi disk dan inhibition zone<br/>4. Perhitungan diameter dalam mm"]:::card
+      end
+
+      subgraph C[ ]
+        direction TB
+        C1["<b>C. Pengembangan Homography</b><br/>1. Deteksi bentuk cawan petri<br/>2. Reduksi glare dan refleksi<br/>3. Transformasi perspektif<br/>4. Koreksi geometri citra"]:::card
+      end
+    end
+
+    T2:::outer --> T3
+
+    subgraph T3[Tahap 3: Integrasi dan Pengujian]
+      direction TB
+      I1["<b>Integrasi Sistem</b><br/>1. Integrasi mobile, dashboard, API, dan database<br/>2. Penyatuan modul homography dan YOLO service<br/>3. Penyimpanan hasil analisis dan gambar anotasi"]:::card
+      U1["<b>Pengujian</b><br/>1. Black box testing fitur utama<br/>2. Uji integrasi alur analisis end-to-end<br/>3. Uji akurasi pengukuran digital vs manual<br/>4. Uji performa dan latensi layanan"]:::card
+      I1 --> U1
+    end
+
+    T3:::outer --> D{Hasil valid?<br/>Akurasi dan fitur<br/>sesuai target}:::decision
+    D -- Ya --> End([Selesai]):::terminator
+
+    D -- Tidak --> A1
+    D -- Tidak --> B1
+    D -- Tidak --> C1
+
+    style T1 fill:#FFFFFF,stroke:#6B7280,stroke-width:1.6px
+    style T2 fill:#FFFFFF,stroke:#6B7280,stroke-width:1.6px
+    style T3 fill:#FFFFFF,stroke:#6B7280,stroke-width:1.6px
+      </pre>
+      <p class="caption"><b>Diagram 1.</b> Diagram alur penelitian Inhibition Zone App</p>
+    </section>
+
+    <p class="note">
+      Jika hasil pengujian belum memenuhi target, iterasi dilakukan kembali pada modul aplikasi,
+      model AI, atau homography sampai akurasi dan fitur sistem sesuai kebutuhan penelitian.
+    </p>
+  </main>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      securityLevel: 'loose',
+      flowchart: {
+        htmlLabels: true,
+        curve: 'linear',
+        nodeSpacing: 40,
+        rankSpacing: 48
+      },
+      themeVariables: {
+        fontFamily: 'Georgia, Times New Roman, serif',
+        primaryTextColor: '#111827',
+        lineColor: '#6B7280',
+        clusterBkg: '#FFFFFF',
+        clusterBorder: '#6B7280'
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnalysisData, AnalysisMeasurement, ResistanceResult } from '../App';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -147,6 +147,7 @@ const createInitialRows = (analysis: AnalysisData, sourceAnalyses: AnalysisData[
 };
 
 export default function ReportCreate({ analysis, relatedAnalyses, initialSampleId, onBack, onConfirm, onRetake }: ReportCreateProps) {
+	const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 	const sourceAnalyses = useMemo(
 		() => (relatedAnalyses && relatedAnalyses.length > 0 ? relatedAnalyses : [analysis]),
 		[analysis, relatedAnalyses],
@@ -185,6 +186,14 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 		const exists = antibioticOptions.some((option) => option.toLowerCase() === activeValue.toLowerCase());
 		return exists ? antibioticOptions : [activeValue, ...antibioticOptions];
 	}, [activeRow]);
+
+	useEffect(() => {
+		const container = scrollContainerRef.current;
+		if (!container) return;
+		requestAnimationFrame(() => {
+			container.scrollTo({ top: 0, behavior: 'auto' });
+		});
+	}, [analysis.id, analysis.processedImage]);
 
 	const updateBacteriaForAll = (value: string) => {
 		setRows((currentRows) => currentRows.map((row) => ({ ...row, bacteriaName: value })));
@@ -251,6 +260,7 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 
 	return (
 		<div
+			ref={scrollContainerRef}
 			className="bio-admin-shell bio-org-profile-shell bio-safe-screen"
 			style={{ overflowY: 'auto', overflowX: 'hidden', touchAction: 'pan-y' }}
 		>

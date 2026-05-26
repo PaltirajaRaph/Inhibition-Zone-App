@@ -2977,7 +2977,10 @@ html {
   .bio-safe-screen {
     padding-top: max(1.2rem, calc(env(safe-area-inset-top, 0px) + 1.1rem));
     padding-bottom: max(1.4rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
-    align-items: center;
+    /* Use safe center so that when content is taller than the viewport,
+       the top of the panel stays reachable instead of being clipped
+       above the scroll area (flexbox overflow-centering bug). */
+    align-items: safe center;
   }
 
   .bio-safe-screen .bio-admin-panel {
@@ -4977,7 +4980,8 @@ html {
     .bio-safe-screen {
       padding-top: max(1.05rem, calc(env(safe-area-inset-top, 0px) + 0.95rem));
       padding-bottom: max(1.35rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
-      align-items: center;
+      /* See note above: prevent top of panel being clipped on shorter phones. */
+      align-items: safe center;
     }
 
     .bio-safe-screen .bio-admin-panel {

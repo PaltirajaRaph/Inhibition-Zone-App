@@ -3,6 +3,8 @@ import { Capacitor } from '@capacitor/core';
 const DEFAULT_WEB_YOLO_BASE = 'http://localhost:9000';
 const DEFAULT_ANDROID_YOLO_BASES = ['http://10.0.2.2:9000', 'http://10.0.3.2:9000'];
 const REQUEST_TIMEOUT_MS = 20000;
+const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1600;
 const YOLO_BASE_KEY = 'biotech.yolo_api_base';
 const YOLO_FALLBACKS_KEY = 'biotech.yolo_api_fallbacks';
 
@@ -86,6 +88,53 @@ const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: numbe
 	}
 };
 
+const loadImageElement = (blob: Blob) =>
+	new Promise<HTMLImageElement>((resolve, reject) => {
+		const objectUrl = URL.createObjectURL(blob);
+		const image = new Image();
+		image.onload = () => {
+			URL.revokeObjectURL(objectUrl);
+			resolve(image);
+		};
+		image.onerror = () => {
+			URL.revokeObjectURL(objectUrl);
+			reject(new Error('Failed to decode image for compression'));
+		};
+		image.src = objectUrl;
+	});
+
+const compressLargeImageBlob = async (blob: Blob) => {
+	if (blob.size <= MAX_UPLOAD_SIZE_BYTES) return blob;
+
+	if (typeof document === 'undefined') return blob;
+
+	try {
+		const image = await loadImageElement(blob);
+		const longest = Math.max(image.width, image.height) || 1;
+		const scale = Math.min(1, MAX_IMAGE_DIMENSION / longest);
+		const targetWidth = Math.max(1, Math.round(image.width * scale));
+		const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+		const canvas = document.createElement('canvas');
+		canvas.width = targetWidth;
+		canvas.height = targetHeight;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return blob;
+
+		ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+		const compressed = await new Promise<Blob | null>((resolve) => {
+			canvas.toBlob((next) => resolve(next), 'image/jpeg', 0.85);
+		});
+
+		if (!compressed) return blob;
+		return compressed.size < blob.size ? compressed : blob;
+	} catch (error) {
+		console.warn('YOLO image compression skipped:', error);
+		return blob;
+	}
+};
+
 export interface YoloDetection {
 	label: string;
 	confidence: number;
@@ -145,7 +194,8 @@ export const analyzeImageViaYolo = async (
 		throw new Error('Failed to read captured image');
 	}
 
-	const blob = await imageResponse.blob();
+	const originalBlob = await imageResponse.blob();
+	const blob = await compressLargeImageBlob(originalBlob);
 	const file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
 
 	let lastError: unknown = null;

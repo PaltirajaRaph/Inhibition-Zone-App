@@ -448,30 +448,57 @@ def mask_from_edges(img_rgb: np.ndarray, ellipse_hint):
     return mask_from_seed_ellipse((h, w), best, scale=1.03)
 
 
-def mask_from_grabcut(img_rgb: np.ndarray, ellipse_hint):
+def mask_from_grabcut(img_rgb: np.ndarray, ellipse_hint, work_max_side: int = 600, iter_count: int = 2):
+    """GrabCut on a downscaled copy to cut runtime ~4-8x, then upscale the mask.
+
+    The downscaled side is bounded by `work_max_side`. Mask quality is preserved
+    because grabCut operates on image regions (not pixel-perfect boundaries),
+    and final morphology smooths the upsampled result.
+    """
     h, w = img_rgb.shape[:2]
+    if h == 0 or w == 0:
+        return None
+
+    long_side = max(h, w)
+    scale = min(1.0, float(work_max_side) / float(long_side))
+
+    if scale < 1.0:
+        sw = max(1, int(round(w * scale)))
+        sh = max(1, int(round(h * scale)))
+        small_img = cv2.resize(img_rgb, (sw, sh), interpolation=cv2.INTER_AREA)
+    else:
+        small_img = img_rgb
+        sw, sh = w, h
+
     (cx, cy), (maj, minr), ang = ellipse_hint
+    s_cx, s_cy = cx * (sw / w), cy * (sh / h)
+    s_maj, s_minr = maj * (sw / w), minr * (sh / h)
 
-    mask = np.full((h, w), cv2.GC_BGD, dtype=np.uint8)
+    mask_small = np.full((sh, sw), cv2.GC_BGD, dtype=np.uint8)
+    outer = np.zeros((sh, sw), dtype=np.uint8)
+    inner = np.zeros((sh, sw), dtype=np.uint8)
 
-    outer = np.zeros((h, w), dtype=np.uint8)
-    inner = np.zeros((h, w), dtype=np.uint8)
+    cv2.ellipse(outer, ((s_cx, s_cy), (s_maj * 1.20, s_minr * 1.20), ang), 255, -1)
+    cv2.ellipse(inner, ((s_cx, s_cy), (s_maj * 0.80, s_minr * 0.80), ang), 255, -1)
 
-    cv2.ellipse(outer, ((cx, cy), (maj * 1.20, minr * 1.20), ang), 255, -1)
-    cv2.ellipse(inner, ((cx, cy), (maj * 0.80, minr * 0.80), ang), 255, -1)
-
-    mask[outer > 0] = cv2.GC_PR_FGD
-    mask[inner > 0] = cv2.GC_FGD
+    mask_small[outer > 0] = cv2.GC_PR_FGD
+    mask_small[inner > 0] = cv2.GC_FGD
 
     bgd = np.zeros((1, 65), np.float64)
     fgd = np.zeros((1, 65), np.float64)
 
     try:
-        cv2.grabCut(img_rgb, mask, None, bgd, fgd, 3, cv2.GC_INIT_WITH_MASK)
+        cv2.grabCut(small_img, mask_small, None, bgd, fgd, int(max(1, iter_count)), cv2.GC_INIT_WITH_MASK)
     except cv2.error:
         return None
 
-    out = np.where((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
+    out_small = np.where((mask_small == cv2.GC_FGD) | (mask_small == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
+
+    if scale < 1.0:
+        out = cv2.resize(out_small, (w, h), interpolation=cv2.INTER_NEAREST)
+    else:
+        out = out_small
+
     out = cv2.morphologyEx(out, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=1)
     out = cv2.morphologyEx(out, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1)
     return out

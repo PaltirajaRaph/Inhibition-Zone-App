@@ -11,6 +11,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.camera.core.*
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.appcompat.app.AppCompatActivity
@@ -59,8 +62,30 @@ class NewAnalysisActivity : AppCompatActivity() {
 
     companion object {
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+		private const val CAPTURE_TARGET_WIDTH = 1920
+		private const val CAPTURE_TARGET_HEIGHT = 1440
+		private const val CAPTURE_JPEG_QUALITY = 90
 		private const val STABILITY_DEGREE_THRESHOLD = 15.0 // degrees
 		private const val ALPHA = 0.2f
+    }
+
+    private fun buildImageCapture(targetRotation: Int): ImageCapture {
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+            .setResolutionStrategy(
+                ResolutionStrategy(
+                    android.util.Size(CAPTURE_TARGET_WIDTH, CAPTURE_TARGET_HEIGHT),
+                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+                )
+            )
+            .build()
+
+        return ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setJpegQuality(CAPTURE_JPEG_QUALITY)
+            .setTargetRotation(targetRotation)
+            .setResolutionSelector(resolutionSelector)
+            .build()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -472,10 +497,9 @@ class NewAnalysisActivity : AppCompatActivity() {
             val preview = Preview.Builder().build()
             preview.setSurfaceProvider(previewView.surfaceProvider)
 
-            imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-                .setTargetRotation(previewView.display?.rotation ?: android.view.Surface.ROTATION_0)
-                .build()
+            imageCapture = buildImageCapture(
+                previewView.display?.rotation ?: android.view.Surface.ROTATION_0
+            )
 
             val selector = CameraSelector.DEFAULT_BACK_CAMERA
             cameraProvider?.unbindAll()

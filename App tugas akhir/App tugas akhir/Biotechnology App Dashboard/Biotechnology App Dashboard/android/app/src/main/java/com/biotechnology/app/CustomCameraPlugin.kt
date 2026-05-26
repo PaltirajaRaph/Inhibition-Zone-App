@@ -17,6 +17,9 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.activity.result.ActivityResult
 import androidx.camera.core.*
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
@@ -67,10 +70,33 @@ class CustomCameraPlugin : Plugin() {
     companion object {
         private const val TAG = "CustomCameraPlugin"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+        private const val CAPTURE_TARGET_WIDTH = 1920
+        private const val CAPTURE_TARGET_HEIGHT = 1440
+        private const val CAPTURE_JPEG_QUALITY = 90
         // Stability threshold (degrees). If absolute roll/pitch exceeds this, considered unstable
 		private const val STABILITY_DEGREE_THRESHOLD = 15.0 // degrees
         // Smoothing factor for low-pass filter
         private const val ALPHA = 0.2f
+    }
+
+    private fun buildImageCapture(targetRotation: Int): ImageCapture {
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+            .setResolutionStrategy(
+                ResolutionStrategy(
+                    android.util.Size(CAPTURE_TARGET_WIDTH, CAPTURE_TARGET_HEIGHT),
+                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+                )
+            )
+            .build()
+
+        return ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setJpegQuality(CAPTURE_JPEG_QUALITY)
+            .setTargetRotation(targetRotation)
+            .setFlashMode(ImageCapture.FLASH_MODE_OFF)
+            .setResolutionSelector(resolutionSelector)
+            .build()
     }
 
     override fun load() {
@@ -196,12 +222,9 @@ class CustomCameraPlugin : Plugin() {
 
                 val preview = Preview.Builder().build()
 
-                imageCapture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-                    // Use display rotation from PreviewView to avoid deprecated APIs
-                    .setTargetRotation(previewView?.display?.rotation ?: android.view.Surface.ROTATION_0)
-                    .setFlashMode(ImageCapture.FLASH_MODE_OFF)
-                    .build()
+                imageCapture = buildImageCapture(
+                    previewView?.display?.rotation ?: android.view.Surface.ROTATION_0
+                )
 
                 val imageAnalyzer = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)

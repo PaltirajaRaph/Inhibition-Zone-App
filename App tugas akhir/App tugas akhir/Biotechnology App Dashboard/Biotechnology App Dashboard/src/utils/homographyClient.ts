@@ -5,7 +5,7 @@ const DEFAULT_ANDROID_HOMOGRAPHY_BASES = ['http://10.0.2.2:8000', 'http://10.0.3
 const REQUEST_TIMEOUT_MS = 15000;
 const REQUEST_TIMEOUT_ANDROID_MS = 120000;
 const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024;
-const MAX_IMAGE_DIMENSION = 1600;
+const MAX_IMAGE_DIMENSION = 1280;
 const HOMOGRAPHY_BASE_KEY = 'biotech.homography_api_base';
 const HOMOGRAPHY_FALLBACKS_KEY = 'biotech.homography_api_fallbacks';
 
@@ -19,7 +19,7 @@ const parseBases = (value?: string) => {
 		.filter((item) => item.length > 0)
 		.map(trimTrailingSlash);
 };
-
+	
 const deriveHomographyBaseFromApiBase = (apiBase: string) => {
 	const trimmed = apiBase.trim();
 	if (!trimmed) return null;
