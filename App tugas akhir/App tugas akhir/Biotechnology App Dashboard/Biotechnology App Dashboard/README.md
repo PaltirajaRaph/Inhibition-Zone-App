@@ -33,41 +33,72 @@
   - Script launcher: `scripts/backend-services.ps1`
   - Jika PowerShell policy ketat, tetap gunakan `npm.cmd` (bukan `npm`).
 
-  ## One-command Android daily workflow
+  ## One-command Windows workflow
 
-  Kalau Anda sudah sering run app, gunakan command ini dari folder app:
+  Run these commands from this app folder:
 
-  - `npm.cmd run android:daily`
+  ```powershell
+  cd "c:\Calvin Institute\Tugas Akhir Production\Inhibition-Zone-App\App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
+  ```
 
-  Ini akan otomatis:
+  Full run: start/check servers, deploy PHP API, sync Android, build debug APK, then open Android Studio:
 
-  - Start backend mode no-xampp (`backend:start:noxampp`)
-  - Build + sync Android assets (`android:sync`)
-  - Open project Android Studio (`npx cap open android`)
+  ```powershell
+  npm.cmd run app:run
+  ```
 
-  Jika tidak ingin auto-open Android Studio:
+  Full run without opening Android Studio:
 
-  - `npm.cmd run android:daily:noopen`
+  ```powershell
+  npm.cmd run app:run:noopen
+  ```
 
-    ## Run on Android Studio (1-click Run)
+  Server + sync only: start/check servers, deploy PHP API, sync Android assets, then open Android Studio. Use this when you want Android Studio to do the final build/install with the **Run** button:
 
-    Tujuan: setelah project Android terbuka dan Gradle sync selesai, Anda cukup pilih device lalu klik tombol **Run** di Android Studio.
+  ```powershell
+  npm.cmd run app:run -- -SkipGradleBuild
+  ```
 
-    1. Dari root project jalankan:
-      - `npm i`
-      - `npm run android:sync`
-    2. Buka Android Studio 3 **Open** 3 pilih folder `android/` (di dalam project ini).
-    3. Tunggu **Gradle Sync** selesai.
-    4. Pilih emulator / device fisik, lalu klik **Run**.
+  Server + sync only without opening Android Studio:
 
-      Jika muncul error **Invalid Gradle JDK configuration**:
-      - Di Android Studio buka: **File 3 Settings 3 Build, Execution, Deployment 3 Build Tools 3 Gradle 3 Gradle JDK**
-      - Pilih **Embedded JDK** / **JDK 17** yang valid.
-      - (Opsional) Hapus file `android/.gradle/config.properties` jika ada nilai `java.home` yang mengarah ke path JDK yang tidak ada.
+  ```powershell
+  npm.cmd run app:run:noopen -- -SkipGradleBuild
+  ```
 
-    Catatan:
-    - File `android/local.properties` sudah diset ke SDK default Windows (`%LOCALAPPDATA%\\Android\\Sdk`). Kalau SDK Anda berada di lokasi lain, Android Studio akan meng-update file ini otomatis.
-    - Setiap kali ada perubahan frontend, jalankan lagi `npm run android:sync`, lalu kembali ke Android Studio dan klik **Run**.
+  The `app:run` commands automatically do these steps:
+
+  - Deploy `database/api` to `C:\xampp\htdocs\biotech-api`
+  - Start/check PHP API, Homography, and YOLO services
+  - Run `android:sync`
+  - Build Android debug APK unless `-SkipGradleBuild` is used
+  - Open Android Studio unless `app:run:noopen` is used
+
+  Important: these commands do not create/import/reset the MySQL database. Create `biotech_dashboard`, import `database/biotech_db.sql`, and apply migrations once before using the app.
+
+  Older lightweight workflow:
+
+  - `npm.cmd run android:daily` starts backend in no-XAMPP mode, syncs Android, and opens Android Studio.
+  - `npm.cmd run android:daily:noopen` does the same without opening Android Studio.
+
+  ## Run on Android Studio (1-click Run)
+
+  Tujuan: setelah project Android terbuka dan Gradle sync selesai, Anda cukup pilih device lalu klik tombol **Run** di Android Studio.
+
+  1. Dari root project jalankan:
+     - `npm i`
+     - `npm run android:sync`
+  2. Buka Android Studio -> **Open** -> pilih folder `android/` (di dalam project ini).
+  3. Tunggu **Gradle Sync** selesai.
+  4. Pilih emulator / device fisik, lalu klik **Run**.
+
+  Jika muncul error **Invalid Gradle JDK configuration**:
+  - Di Android Studio buka: **File -> Settings -> Build, Execution, Deployment -> Build Tools -> Gradle -> Gradle JDK**
+  - Pilih **Embedded JDK** / **JDK 17** yang valid.
+  - (Opsional) Hapus file `android/.gradle/config.properties` jika ada nilai `java.home` yang mengarah ke path JDK yang tidak ada.
+
+  Catatan:
+  - File `android/local.properties` sudah diset ke SDK default Windows (`%LOCALAPPDATA%\\Android\\Sdk`). Kalau SDK Anda berada di lokasi lain, Android Studio akan meng-update file ini otomatis.
+  - Setiap kali ada perubahan frontend, jalankan lagi `npm run android:sync`, lalu kembali ke Android Studio dan klik **Run**.
 
   ## API requirements
 
