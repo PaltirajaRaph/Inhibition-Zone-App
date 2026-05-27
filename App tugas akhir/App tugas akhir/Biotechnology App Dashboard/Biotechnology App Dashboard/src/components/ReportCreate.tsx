@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { antibioticsData } from './AntibioticsReference';
 import { compactReportId } from '../utils/analysisId';
+import { inferSirResult, sirAntibioticOptions } from '../utils/sirBreakpoints';
 
 const parseTagsInput = (value: string): string[] => {
 	const seen = new Set<string>();
@@ -21,7 +22,10 @@ const parseTagsInput = (value: string): string[] => {
 	return output;
 };
 
-const antibioticOptions = antibioticsData.map((a) => a.name);
+const antibioticOptions = Array.from(
+	new Map([...antibioticsData.map((a) => a.name), ...sirAntibioticOptions]
+		.map((name) => [name.toLowerCase(), name])).values(),
+).sort((first, second) => first.localeCompare(second));
 
 const RESULT_OPTIONS: Array<{ value: ResistanceResult; label: string }> = [
 	{ value: 'RESISTEN', label: 'Resistant' },
@@ -71,6 +75,7 @@ const getMeasurementSampleLabel = (measurement: AnalysisMeasurement, fallbackInd
 interface ReportCreateProps {
 	analysis: AnalysisData;
 	relatedAnalyses?: AnalysisData[];
+	availableBacteriaOptions?: string[];
 	initialSampleId?: string;
 	onBack: () => void;
 	onConfirm: (updatedAnalysis: AnalysisData | AnalysisData[]) => void;
@@ -87,6 +92,28 @@ type ReportRowDraft = {
 	antibiotic: string;
 	actionDate: string;
 	result: ResistanceResult | '';
+	resultSource?: 'auto' | 'manual';
+};
+
+const withInferredResult = (row: ReportRowDraft): ReportRowDraft => {
+	if (row.resultSource === 'manual') return row;
+	const inferredResult = inferSirResult({
+		bacteriaName: row.bacteriaName,
+		antibiotic: row.antibiotic,
+		diameterMm: row.diameter,
+	});
+	return {
+		...row,
+		result: inferredResult,
+		resultSource: inferredResult ? 'auto' : undefined,
+	};
+};
+
+const createRowWithResult = (row: Omit<ReportRowDraft, 'result' | 'resultSource'>, existingResult?: ResistanceResult | ''): ReportRowDraft => {
+	if (existingResult) {
+		return { ...row, result: existingResult, resultSource: 'manual' };
+	}
+	return withInferredResult({ ...row, result: '' });
 };
 
 const createInitialRows = (analysis: AnalysisData, sourceAnalyses: AnalysisData[]): ReportRowDraft[] => {
@@ -103,7 +130,7 @@ const createInitialRows = (analysis: AnalysisData, sourceAnalyses: AnalysisData[
 	if (sourceAnalyses.length > 1) {
 		return sourceAnalyses.map((item, index) => {
 			const measurement = item.measurements?.[0];
-			return {
+			return createRowWithResult({
 				id: `analysis-${item.id || index + 1}-${index + 1}`,
 				analysisId: item.id,
 				label: measurement ? getMeasurementSampleLabel(measurement, index) : getSampleLabel(index),
@@ -112,13 +139,12 @@ const createInitialRows = (analysis: AnalysisData, sourceAnalyses: AnalysisData[
 				specimenType: item.specimenType?.trim() || '',
 				antibiotic: (item.antibioticA || item.antibiotic || '').trim(),
 				actionDate: sharedActionDate,
-				result: item.result || measurement?.result || '',
-			};
+			}, item.result || measurement?.result || '');
 		});
 	}
 
 	if (analysis.measurements && analysis.measurements.length > 0) {
-		return analysis.measurements.map((measurement, index) => ({
+		return analysis.measurements.map((measurement, index) => createRowWithResult({
 			id: `measurement-${measurement.id || index + 1}-${index + 1}`,
 			analysisId: index === 0 ? analysis.id : undefined,
 			label: getMeasurementSampleLabel(measurement, index),
@@ -127,12 +153,11 @@ const createInitialRows = (analysis: AnalysisData, sourceAnalyses: AnalysisData[
 			specimenType: baseSpecimen,
 			antibiotic: baseAntibiotic,
 			actionDate: sharedActionDate,
-			result: measurement.result || baseResult,
-		}));
+		}, measurement.result || baseResult));
 	}
 
 	return [
-		{
+		createRowWithResult({
 			id: `analysis-${analysis.id || 'draft'}-1`,
 			analysisId: analysis.id,
 			label: 'Sample 1',
@@ -141,12 +166,151 @@ const createInitialRows = (analysis: AnalysisData, sourceAnalyses: AnalysisData[
 			specimenType: baseSpecimen,
 			antibiotic: baseAntibiotic,
 			actionDate: sharedActionDate,
-			result: baseResult,
-		},
+		}, baseResult),
 	];
 };
 
-export default function ReportCreate({ analysis, relatedAnalyses, initialSampleId, onBack, onConfirm, onRetake }: ReportCreateProps) {
+const dedupeOptions = (values: string[]) => Array.from(
+	new Map(
+		values
+			.map((value) => value.trim())
+			.filter(Boolean)
+			.map((value) => [value.toLowerCase(), value]),
+	).values(),
+).sort((first, second) => first.localeCompare(second));
+
+interface SearchableComboboxProps {
+	value: string;
+	options: string[];
+	placeholder: string;
+	emptyLabel: string;
+	onSelect: (value: string) => void;
+	allowCustomValue?: boolean;
+}
+
+function SearchableCombobox({
+	value,
+	options,
+	placeholder,
+	emptyLabel,
+	onSelect,
+	allowCustomValue = true,
+}: SearchableComboboxProps) {
+	const [isOpen, setIsOpen] = useState(false);
+	const rootRef = useRef<HTMLDivElement | null>(null);
+	const inputRef = useRef<HTMLInputElement | null>(null);
+
+	const normalizedOptions = useMemo(
+		() => dedupeOptions(value ? [value, ...options] : options),
+		[options, value],
+	);
+
+	const filteredOptions = useMemo(() => {
+		const trimmedQuery = value.trim().toLowerCase();
+		if (!trimmedQuery) return normalizedOptions;
+		return normalizedOptions.filter((option) => option.toLowerCase().includes(trimmedQuery));
+	}, [normalizedOptions, value]);
+
+	const trimmedValue = value.trim();
+	const hasExactMatch = normalizedOptions.some((option) => option.toLowerCase() === trimmedValue.toLowerCase());
+	const isCustomValue = allowCustomValue && trimmedValue.length > 0 && !hasExactMatch;
+	const shouldShowDropdown = isOpen && (filteredOptions.length > 0 || (!allowCustomValue && trimmedValue.length > 0));
+
+	useEffect(() => {
+		if (!isOpen) return;
+
+		const handlePointerDown = (event: PointerEvent) => {
+			if (!rootRef.current) return;
+			if (rootRef.current.contains(event.target as Node)) return;
+			setIsOpen(false);
+		};
+
+		document.addEventListener('pointerdown', handlePointerDown);
+		return () => {
+			document.removeEventListener('pointerdown', handlePointerDown);
+		};
+	}, [isOpen]);
+
+	useEffect(() => {
+		if (!isOpen || typeof window === 'undefined' || !window.visualViewport) return;
+
+		const viewport = window.visualViewport;
+		const keepFieldVisible = () => {
+			requestAnimationFrame(() => {
+				inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+			});
+		};
+
+		viewport.addEventListener('resize', keepFieldVisible);
+		viewport.addEventListener('scroll', keepFieldVisible);
+		return () => {
+			viewport.removeEventListener('resize', keepFieldVisible);
+			viewport.removeEventListener('scroll', keepFieldVisible);
+		};
+	}, [isOpen]);
+
+	const handleFocus = () => {
+		setIsOpen(true);
+		requestAnimationFrame(() => {
+			inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+		});
+		window.setTimeout(() => {
+			inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+		}, 260);
+	};
+
+	const handleSelect = (nextValue: string) => {
+		onSelect(nextValue);
+		setIsOpen(false);
+		requestAnimationFrame(() => {
+			inputRef.current?.focus();
+		});
+	};
+
+	return (
+		<div ref={rootRef} className="bio-searchable-select">
+			<Input
+				ref={inputRef}
+				value={value}
+				onChange={(event) => {
+					onSelect(event.target.value);
+					setIsOpen(true);
+				}}
+				onFocus={handleFocus}
+				placeholder={placeholder}
+				autoComplete="off"
+				className="bio-report-form-select h-10 w-full"
+			/>
+			{shouldShowDropdown && (
+				<div className="bio-searchable-select-panel" role="listbox">
+					{filteredOptions.length > 0 ? filteredOptions.map((option) => {
+						const isSelected = option.toLowerCase() === trimmedValue.toLowerCase();
+						return (
+							<button
+								key={option}
+								type="button"
+								className={`bio-searchable-select-option${isSelected ? ' is-active' : ''}`}
+								onMouseDown={(event) => event.preventDefault()}
+								onClick={() => handleSelect(option)}
+							>
+								{option}
+							</button>
+						);
+					}) : (
+						<div className="bio-searchable-select-empty">{emptyLabel}</div>
+					)}
+				</div>
+			)}
+			{isCustomValue && (
+				<span className="bio-searchable-select-help text-[11px] font-medium text-slate-500">
+					{filteredOptions.length > 0 ? 'Using custom value while showing closest matches.' : `${emptyLabel} Custom value will be used.`}
+				</span>
+			)}
+		</div>
+	);
+}
+
+export default function ReportCreate({ analysis, relatedAnalyses, availableBacteriaOptions, initialSampleId, onBack, onConfirm, onRetake }: ReportCreateProps) {
 	const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 	const sourceAnalyses = useMemo(
 		() => (relatedAnalyses && relatedAnalyses.length > 0 ? relatedAnalyses : [analysis]),
@@ -186,6 +350,10 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 		const exists = antibioticOptions.some((option) => option.toLowerCase() === activeValue.toLowerCase());
 		return exists ? antibioticOptions : [activeValue, ...antibioticOptions];
 	}, [activeRow]);
+	const bacteriaSelectOptions = useMemo(() => dedupeOptions([
+		...(availableBacteriaOptions || []),
+		...sourceAnalyses.map((item) => item.bacteriaName || ''),
+	]), [availableBacteriaOptions, sourceAnalyses]);
 
 	useEffect(() => {
 		const container = scrollContainerRef.current;
@@ -196,7 +364,7 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 	}, [analysis.id, analysis.processedImage]);
 
 	const updateBacteriaForAll = (value: string) => {
-		setRows((currentRows) => currentRows.map((row) => ({ ...row, bacteriaName: value })));
+		setRows((currentRows) => currentRows.map((row) => withInferredResult({ ...row, bacteriaName: value })));
 	};
 
 	const updateActionDateForAll = (value: string) => {
@@ -208,7 +376,11 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 		value: ReportRowDraft[Key],
 	) => {
 		setRows((currentRows) => currentRows.map((row, index) => (
-			index === activeRowIndex ? { ...row, [key]: value } : row
+			index === activeRowIndex
+				? key === 'result'
+					? { ...row, [key]: value, resultSource: 'manual' }
+					: withInferredResult({ ...row, [key]: value })
+				: row
 		)));
 	};
 
@@ -225,6 +397,13 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 		const updatedAnalyses = rows.map((row, index) => {
 			const sourceAnalysis = sourceAnalyses.find((item) => item.id === row.analysisId) || sourceAnalyses[index] || analysis;
 			const sourceMeasurement = sourceAnalysis.measurements?.[0] || analysis.measurements?.[index];
+			const updatedMeasurement = sourceMeasurement
+				? {
+					...sourceMeasurement,
+					diameterMm: row.diameter ?? sourceMeasurement.diameterMm,
+					result: row.result || undefined,
+				}
+				: undefined;
 			const outputId = sourceAnalyses.length > 1 && row.analysisId
 				? row.analysisId
 				: index === 0
@@ -249,7 +428,7 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 				result: row.result || undefined,
 				processedImage: analysis.processedImage || analysis.originalImage,
 				originalImage: analysis.originalImage,
-				measurements: sourceMeasurement ? [sourceMeasurement] : [],
+				measurements: updatedMeasurement ? [updatedMeasurement] : [],
 			};
 		});
 
@@ -464,27 +643,25 @@ export default function ReportCreate({ analysis, relatedAnalyses, initialSampleI
 						<div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label className="grid gap-1.5">
 								<span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bacteria</span>
-								<Input
+								<SearchableCombobox
 									value={activeRow.bacteriaName}
-									onChange={(event) => updateBacteriaForAll(event.target.value)}
-									placeholder="E. coli"
-									className="h-10 w-full"
+									options={bacteriaSelectOptions}
+									placeholder="Select or search bacteria"
+									emptyLabel="No bacteria found."
+									onSelect={updateBacteriaForAll}
 								/>
 								<span className="text-[11px] font-medium text-slate-500">Applied to all detected samples on this petri dish.</span>
 							</label>
 
 							<label className="grid gap-1.5 sm:col-span-2">
 								<span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Antibiotic</span>
-								<select
+								<SearchableCombobox
 									value={activeRow.antibiotic}
-									onChange={(event) => updateActiveRow('antibiotic', event.target.value)}
-									className="bio-report-form-select h-10 w-full"
-								>
-									<option value="">Select antibiotic</option>
-									{antibioticSelectOptions.map((name) => (
-										<option key={name} value={name}>{name}</option>
-									))}
-								</select>
+									options={antibioticSelectOptions}
+									placeholder="Select or search antibiotic"
+									emptyLabel="No antibiotic found."
+									onSelect={(value) => updateActiveRow('antibiotic', value)}
+								/>
 							</label>
 
 							<label className="grid gap-1.5">

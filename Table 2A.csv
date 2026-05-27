@@ -1,0 +1,230 @@
+Bakteri Target,Test,Report Group,Antimicrobial Agent,Disk Content,Satuan (DC),Zone Diameter IC - S,Zone Diameter IC - SDD - BB,Zone Diameter IC - SDD - BA,Zone Diameter IC - I - BB,Zone Diameter IC - I - BA,Zone Diameter IC - R,MIC IC (µg/mL) - S,MIC IC (µg/mL) - SSD - BB,MIC IC (µg/mL) - SSD - BA,MIC IC (µg/mL) - I - BB,MIC IC (µg/mL) - I - BA,MIC IC (µg/mL) - R,Comments
+Enterobacteriaceae,PENICILLINS,A,Ampicillin,10,µg,17,,,14,16,13,8,,,16,16,32,"(4) Results of ampicillin testing
+ can be used to predict results for
+ amoxicillin.
+ See comment (2)."
+Enterobacteriaceae,PENICILLINS,B,Piperacillin,100,µg,21,,,18,20,17,16,,,32,64,128,
+Enterobacteriaceae,PENICILLINS,O,Mecillinam,10,µg,15,,,12,14,11,8,,,16,16,32,"(5) For testing and reporting of E.
+ coli urinary tract isolates only."
+Enterobacteriaceae,PENICILLINS,O,Ticarcillin,75,µg,20,,,15,19,14,16,,,32,64,128,
+Enterobacteriaceae,β-LACTAM/β-LACTAMASE INHIBITOR COMBINATIONS,B,Amoxicilin-clabulanate,20/10,µg,18,,,14,17,13,8/4,,,16/8,16/8,32/16,
+Enterobacteriaceae,β-LACTAM/β-LACTAMASE INHIBITOR COMBINATIONS,B,Ampicilin-subactam,10/10,µg,15,,,12,14,11,8/4,,,16/8,16/8,32/16,
+Enterobacteriaceae,β-LACTAM/β-LACTAMASE INHIBITOR COMBINATIONS,B,Piperacilin-tazobactam,100/10,µg,21,,,18,20,17,16/4,,,32/4,64/4,128/4,
+Enterobacteriaceae,β-LACTAM/β-LACTAMASE INHIBITOR COMBINATIONS,B,Ticarcilin-clavulanate,75/10,µg,20,,,15,19,14,16/2,,,32/2,64/4,128/4,
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",A,Cefazolin,30,µg,23,,,20,22,19,2,,,4,4,8,"(9) Interpretive criteria are based
+on a dosage regimen of 2 g
+every 8 h.
+See comment (7).
+For UTI interpretive criteria,
+see below under CEPHEMS
+(ORAL)."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",C,Ceftaroline,30,µg,23,,,20,22,19,0.5,,,1,1,2,"(10) Interpretive criteria are
+based on a dosage regimen of
+600 mg every 12 h."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",U,"Cephalothin
+(surrogate test for
+uncomplicated UTI)",30,µg,18,,,15,17,14,8,,,16,16,32,"(11) Cephalothin interpretive
+criteria can be used only to
+predict susceptibility to the oral
+agents, cefadroxil, cefpodoxime,
+cephalexin, and loracarbef. Older
+data that suggest that cephalothin
+results could predict susceptibility
+to some other cephalosporins
+may still be correct, but there are
+no recent data to confirm this.
+
+(12) To predict results for oral
+cephalosporins when used for
+therapy of uncomplicated UTIs,
+testing cefazolin is preferred to
+testing cephalothin."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",B,Cefepime,30,µg,25,19,24,-,-,18,2,4,8,-,-,16,"(13) The interpretive criterion
+for susceptible is based on a
+dosage regimen of 1 g every 12
+h. The interpretive criterion for
+SDD is based on dosing
+regimens that result in higher
+cefepime exposure, either
+higher doses or more frequent
+doses or both, up to approved
+maximum dosing regimens.
+See Appendix E for more
+information about interpretive
+criteria and dosing regimens.
+Also see the definition of SDD
+in the Instructions for Use of
+Tables section."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",B,Cefotaxime,30,µg,26,,,23,25,22,1,,,2,2,4,"(14) Interpretive criteria are
+based on a dosage regimen of 1 g
+every 24 h for ceftriaxone and 1 g
+every 8 h for cefotaxime.
+See comment (7)."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",B,Ceftriaxone,30,µg,23,,,20,22,19,1,,,2,2,4,"(14) Interpretive criteria are
+based on a dosage regimen of 1 g
+every 24 h for ceftriaxone and 1 g
+every 8 h for cefotaxime.
+See comment (7)."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",B,Cefotetan,30,µg,16,,,13,15,12,16,,,32,32,64,
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",B,Cefoxitin,30,µg,18,,,15,17,14,8,,,16,16,32,"(15) The interpretive criteria are
+based on a dosage regimen of at
+least 8 g per day (eg, 2 g every 6
+h)."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",B,"Cefuroxime
+(parenteral)",30,µg,18,,,15,17,14,8,,,16,16,32,"(16) Interpretive criteria are
+based on a dosage regimen of
+1.5 g every 8 h.
+See comment (7)."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",C,Ceftazidime,30,µg,21,,,18,20,17,4,,,8,8,16,"(17) Interpretive criteria are
+based on a dosage regimen of 1
+g every 8 h.
+See comment (7)."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",O,Cefamandole,30,µg,18,,,15,17,14,8,,,16,16,32,See comment (7).
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",O,Cefmetazole,30,µg,16,,,13,15,12,16,,,32,32,64,"(18) Insufficient new data exist to
+reevaluate interpretive criteria
+listed here."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",O,Cefonicid,30,µg,18,,,15,17,14,8,,,16,16,32,See comment (7).
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",O,Cefoperazone,75,µg,21,,,16,20,15,16,,,32,32,64,See comment (7).
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",O,Ceftizoxime,30,µg,25,,,22,24,21,1,,,2,2,4,"(19) Interpretive criteria are
+based on a dosage regimen of 1
+g every 12 h.
+See comment (7)."
+Enterobacteriaceae,"CEPHEMS (PARENTERAL) (Including cephalosporins I, II, III, and IV.)",O,Moxalactam,30,µg,23,,,15,22,14,8,,,16,32,64,See comment (7).
+Enterobacteriaceae,CEPHEMS (ORAL),B,Cefuroxime (oral),30,µg,23,,,15,22,14,4,,,8,16,32,See comments (12 and 20).
+Enterobacteriaceae,CEPHEMS (ORAL),U,"Cefazolin
+(surrogate test for
+uncomplicated UTI)",30,µg,15,,,-,-,14,16,-,-,-,-,32,"(20) Rx: Cefazolin results
+predict results for the oral
+agents cefaclor, cefdinir,
+cefpodoxime, cefprozil,
+cefuroxime axetil, cephalexin,
+and loracarbef when used for
+therapy of uncomplicated UTIs
+due to E. coli, K. pneumoniae,
+and P. mirabilis. Cefpodoxime,
+cefdinir, and cefuroxime axetil
+may be tested individually
+because some isolates may be
+susceptible to these agents
+while testing resistant to
+cefazolin.
+See comment (12)."
+Enterobacteriaceae,CEPHEMS (ORAL),O,Loracarbef,30,µg,18,,,15,17,14,8,,,16,16,32,"(21) Do not test Citrobacter,
+Providencia, or Enterobacter spp.
+with cefdinir or loracarbef by disk
+diffusion because false-susceptible
+results have been reported.
+See comments (12 and 20)."
+Enterobacteriaceae,CEPHEMS (ORAL),O,Cefaclor,30,µg,18,,,15,17,14,8,,,16,16,32,See comments (12 and 20).
+Enterobacteriaceae,CEPHEMS (ORAL),O,Cefdinir,5,µg,20,,,17,19,16,1,,,2,2,4,"See comments (12, 20, and 21)."
+Enterobacteriaceae,CEPHEMS (ORAL),O,Cefixime,5,µg,19,,,16,18,15,1,,,2,2,4,"(22) Do not test Morganella spp.
+with cefixime, cefpodixime, or
+cefetamet by disk diffusion."
+Enterobacteriaceae,CEPHEMS (ORAL),O,Cefpodoxime,10,µg,21,,,18,20,17,2,,,4,4,8,"See comments (12, 20, and 22)."
+Enterobacteriaceae,CEPHEMS (ORAL),O,Cefprozil,30,µg,18,,,15,17,14,8,,,16,16,32,"(23) Do not test Providencia spp.
+with cefprozil by disk diffusion
+because false-susceptible results
+have been reported.
+See comments (12 and 20)."
+Enterobacteriaceae,CEPHEMS (ORAL),Inv.,Cefetamet,10,µg,18,,,15,17,14,4,,,8,8,16,See comment (22).
+Enterobacteriaceae,CEPHEMS (ORAL),Inv.,Ceftibuten,30,µg,21,,,18,20,17,8,,,16,16,32,"(24) For testing and reporting of
+urine isolates only."
+Enterobacteriaceae,MONOBACTAMS,C,Aztreonam,30,µg,21,,,18,20,17,4,,,8,8,16,"(25) Interpretive criteria are based
+on a dosage regimen of 1 g every 8
+h.
+See comment (7)."
+Enterobacteriaceae,CARBAPENEMS,B,Doripenem,10,µg,23,,,20,22,19,1,,,2,2,4,"(27) Interpretive criteria are
+based on a dosage regimen of
+500 mg every 8 h."
+Enterobacteriaceae,CARBAPENEMS,B,Ertapenem,10,µg,22,,,19,21,18,0.5,,,1,1,2,"(28) Interpretive criteria are
+based on a dosage regimen of
+1 g every 24 h."
+Enterobacteriaceae,CARBAPENEMS,B,Imipenem,10,µg,23,,,20,22,19,1,,,2,2,4,"(29) Interpretive criteria are
+based on a dosage regimen of
+500 mg every 6 h or 1 g every
+8 h."
+Enterobacteriaceae,CARBAPENEMS,B,Meropenem,10,µg,23,,,20,22,19,1,,,2,2,4,"(30) Interpretive criteria are
+based on a dosage regimen of
+1 g every 8 h."
+Enterobacteriaceae,AMINOGLYCOSIDES,A,Gentamicin,10,µg,15,,,13,14,12,4,,,8,8,16,
+Enterobacteriaceae,AMINOGLYCOSIDES,A,Tobramycin,10,µg,15,,,13,14,12,4,,,8,8,16,
+Enterobacteriaceae,AMINOGLYCOSIDES,B,Amikacin,30,µg,17,,,15,16,14,16,,,32,32,64,
+Enterobacteriaceae,AMINOGLYCOSIDES,O,Kanamycin,30,µg,18,,,14,17,13,16,,,32,32,64,
+Enterobacteriaceae,AMINOGLYCOSIDES,O,Netilmicin,30,µg,15,,,13,14,12,8,,,16,16,32,
+Enterobacteriaceae,AMINOGLYCOSIDES,O,Streptomycin,10,µg,15,,,12,14,11,-,,,-,-,-,"(32) There are no MIC
+interpretive standards."
+Enterobacteriaceae,TETRACYCLINES,C,Tetracycline,30,µg,15,,,12,14,11,4,,,8,8,16,
+Enterobacteriaceae,TETRACYCLINES,O,Doxycycline,30,µg,14,,,11,13,10,4,,,8,8,16,
+Enterobacteriaceae,TETRACYCLINES,O,Minocycline,30,µg,16,,,13,15,12,4,,,8,8,16,
+Enterobacteriaceae,FLUOROQUINOLONES,B,Ciprofloxacin,5,µg,21,,,16,20,15,1,,,2,2,4,"(34) For testing and reporting of
+Enterobacteriaceae except for
+Salmonella spp."
+Enterobacteriaceae,FLUOROQUINOLONES,B,Levofloxacin,5,µg,17,,,14,16,13,2,,,4,4,8,"(34) For testing and reporting of
+Enterobacteriaceae except for
+Salmonella spp."
+Enterobacteriaceae,FLUOROQUINOLONES,B,Ciprofloxacin,5,µg,31,,,21,30,20,0.06,,,0.12,0.5,1,"(35) For testing and reporting of
+Salmonella spp. (including S.
+Typhi and S. Paratyphi A–C).
+See comment (2).
+(36) If MIC testing is not
+performed or if interpretive
+criteria cannot be implemented,
+see comment (39)."
+Enterobacteriaceae,FLUOROQUINOLONES,B,Levofloxacin,-,µg,-,,,,,,0.12,,,0.25,1,2,"(35) For testing and reporting of
+Salmonella spp. (including S.
+Typhi and S. Paratyphi A–C).
+See comment (2).
+(36) If MIC testing is not
+performed or if interpretive
+criteria cannot be implemented,
+see comment (39)."
+Enterobacteriaceae,FLUOROQUINOLONES,B,Ofloxacin,-,µg,-,,,,,,0.12,,,0.25,1,2,"(35) For testing and reporting of
+Salmonella spp. (including S.
+Typhi and S. Paratyphi A–C).
+See comment (2).
+(36) If MIC testing is not
+performed or if interpretive
+criteria cannot be implemented,
+see comment (39)."
+Enterobacteriaceae,FLUOROQUINOLONES,U,Lomefloxacin,10,µg,22,,,19,21,18,2,,,4,4,8,
+Enterobacteriaceae,FLUOROQUINOLONES,U,ofloxacin,5,µg,16,,,13,15,12,2,,,4,4,8,
+Enterobacteriaceae,FLUOROQUINOLONES,U,Norfloxacin,10,µg,17,,,13,16,12,4,,,8,8,16,
+Enterobacteriaceae,FLUOROQUINOLONES,O,Enoxacin,10,µg,18,,,15,17,14,2,,,4,4,8,
+Enterobacteriaceae,FLUOROQUINOLONES,O,Gatifloxacin,5,µg,18,,,15,17,14,2,,,4,4,8,
+Enterobacteriaceae,FLUOROQUINOLONES,O,Gemifloxacin,5,µg,20,,,16,19,15,0.25,,,0.5,0.5,1,"(37) FDA-approved for Klebsiella
+pneumoniae."
+Enterobacteriaceae,FLUOROQUINOLONES,O,Grepafloxacin,5,µg,18,,,15,17,14,1,,,2,2,4,
+Enterobacteriaceae,FLUOROQUINOLONES,Inv.,Fleroxacin,5,µg,19,,,16,18,15,2,,,4,4,8,
+Enterobacteriaceae,QUINOLONES,O,Cinoxacin,100,µg,19,,,15,18,14,16,,,32,32,64,See comment (24).
+Enterobacteriaceae,QUINOLONES,O,Nalidixic acid,30,µg,19,,,14,18,13,16,,,-,-,32,"(38) These interpretive criteria are for urinary tract
+isolates of Enterobacteriaceae and for all isolates of
+Salmonella.
+(39) Until laboratories can implement the current
+interpretive criteria for ciprofloxacin, levofloxacin,
+and/or ofloxacin, nalidixic acid may be
+used to test for reduced fluoroquinolone
+susceptibility in Salmonella. Strains of Salmonella
+that test resistant to nalidixic acid may be
+associated with clinical failure or delayed
+response in fluoroquinolone-treated patients with
+salmonellosis.
+Note that nalidixic acid may not detect all
+mechanisms of fluoroquinolone resistance."
+Enterobacteriaceae,FOLATE PATHWAY INHIBITORS,B,"Trimethoprim-
+sulfamethoxazole",1.25/23.75,µg,16,,,11,15,10,2/38,,,-,-,4/76,See comment (2).
+Enterobacteriaceae,FOLATE PATHWAY INHIBITORS,U,Sulfonamides,250,µg,17,,,13,16,12,256,,,-,-,512,"(40) Sulfisoxazole can be used to represent any of
+the currently available sulfonamide preparations."
+Enterobacteriaceae,,,,300,µg,17,,,13,16,12,256,,,-,-,512,"(40) Sulfisoxazole can be used to represent any of
+the currently available sulfonamide preparations."
+Enterobacteriaceae,FOLATE PATHWAY INHIBITORS,U,Trimethoprim,5,µg,16,,,11,15,10,8,,,-,-,16,
+Enterobacteriaceae,PHENICOLS,C,Chloramphenicol,30,µg,18,,,13,17,12,8,,,16,16,32,"(41) Not routinely reported on isolates from the
+urinary tract."
+Enterobacteriaceae,FOSFOMYCINS,O,Fosfomycin,200,µg,16,,,13,15,12,64,,,128,128,256,"(42) For testing and reporting of E. coli urinary tract
+isolates only.
+(43) The 200-µg fosfomycin disk contains 50 µg of
+glucose-6-phosphate.
+(44) The only approved MIC method for testing is
+agar dilution using agar media supplemented with
+25 µg/mL of glucose-6-phosphate. Broth dilution
+MIC testing should not be performed."
+Enterobacteriaceae,NITROFURANS,U,Nitrofurantoin,300,µg,17,,,15,16,14,32,,,64,64,128,

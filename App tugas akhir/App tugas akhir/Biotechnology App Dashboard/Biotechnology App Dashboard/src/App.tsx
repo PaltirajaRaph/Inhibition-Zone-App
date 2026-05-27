@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { MemberData } from './components/CreateOrganizationMember';
 import type {
   ManagedAdminAccount,
@@ -1913,6 +1913,16 @@ export default function App() {
   };
   const activeHomeView: View = currentRole === 'admin' ? 'adminDashboard' : 'dashboard';
   const reportCreateAnalysis = currentView === 'reportCreate' ? resolveFocusedAnalysis(currentAnalysis) : currentAnalysis;
+  const reportCreateBacteriaOptions = useMemo(
+    () => Array.from(
+      new Set(
+        analyses
+          .map((item) => (item.bacteriaName || '').trim())
+          .filter(Boolean),
+      ),
+    ).sort((first, second) => first.localeCompare(second)),
+    [analyses],
+  );
   const reportScreenAnalysis = currentView === 'report' ? resolveFocusedAnalysis(currentAnalysis) : currentAnalysis;
   const memberBottomNavViews: View[] = ['dashboard', 'history', 'antibiotics', 'analytics', 'settings'];
   const showMemberBottomNav = currentRole === 'member' && memberBottomNavViews.includes(currentView);
@@ -2198,6 +2208,7 @@ export default function App() {
         <ReportCreate
           analysis={reportCreateAnalysis}
           relatedAnalyses={getRelatedReportAnalyses(reportCreateAnalysis)}
+          availableBacteriaOptions={reportCreateBacteriaOptions}
           initialSampleId={reportCreateAnalysis.id}
           onBack={() => setCurrentView(reportCreateBackView)}
           onConfirm={(updated: AnalysisData | AnalysisData[]) => {

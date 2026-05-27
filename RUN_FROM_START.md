@@ -268,7 +268,8 @@ In Android Studio:
 
 ## 12. Daily Run After Setup
 
-After the first setup, the normal flow is shorter.
+Dari folder app:
+"C:\Calvin Institute\Tugas Akhir Production\Inhibition-Zone-App\App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
 
 Start backend:
 
@@ -294,36 +295,6 @@ Or use the shortcut:
 ```powershell
 npm.cmd run android:daily
 ```
-
-## 13. Common Problems
-
-If login/register cannot reach database:
-
-- XAMPP Apache and MySQL must be running.
-- API must exist at `C:\xampp\htdocs\biotech-api`.
-- `.env` must use the correct emulator or phone URL.
-- Run `npm.cmd run android:sync` after changing `.env`.
-
-If YOLO fails:
-
-- Check `App tugas akhir/App tugas akhir/YOLO AI/best.pt` exists.
-- Run `git lfs pull` if cloned from GitHub.
-- Check `http://localhost:9000/health`.
-- Use Python 3.10 or 3.11.
-
-If homography fails:
-
-- Check `http://localhost:8000/health`.
-- For physical phone, laptop and phone must be on the same Wi-Fi.
-- Windows Firewall may need to allow Python on private networks.
-
-If Android shows old UI:
-
-```powershell
-npm.cmd run android:sync
-```
-
-Then run the app again from Android Studio.
 
 If PowerShell blocks `npm`:
 
