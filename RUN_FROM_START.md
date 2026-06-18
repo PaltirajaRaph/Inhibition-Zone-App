@@ -1,163 +1,135 @@
-# Run The App From Start
+# Inhibition Zone App Setup
 
-This guide is for testing the clean production repo on this PC.
+This repository is the handoff version for running the inhibition-zone analysis system. It includes the React/Capacitor frontend, PHP API, homography service, YOLO inference service, and the breakpoint CSV used for automatic S/I/R suggestions.
 
-## 1. Open The Correct Folder
-
-Open a terminal in the new repo root:
+## 1. Clone The Repository
 
 ```powershell
-cd "C:\Tugas Akhir Palti\Biotechnology-App-Production"
+git clone <REPOSITORY_URL>
+cd Inhibition-Zone-App
+git lfs pull
 ```
 
-The React/Capacitor app folder is:
+`git lfs pull` is required because the YOLO model is stored with Git LFS.
 
-```powershell
-cd "C:\Tugas Akhir Palti\Biotechnology-App-Production\App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
-```
+## 2. Install Required Software
 
-Most app commands below are run from that React/Capacitor app folder.
+Install these first:
 
-## 2. Install Required Programs
-
-Make sure these are installed:
-
-- XAMPP
-- Node.js LTS
-- Python 3.10 or 3.11
+- Git
 - Git LFS
-- Android Studio
-- Android SDK
+- Node.js LTS
+- Python 3.10
+- XAMPP with Apache and MySQL
+- Android Studio with Android SDK
 - Android Studio Embedded JDK or JDK 17
 
-Check basics:
+Check the tools:
 
 ```powershell
 node -v
 npm.cmd -v
-python --version
-git lfs version
 py -0p
+git lfs version
 ```
 
-Use `npm.cmd`, not `npm`, in PowerShell.
+Use `npm.cmd` in PowerShell on Windows.
 
-For this project, keep Python 3.10 on the new laptop so it matches the current machine.
-
-If `py -0p` does not show Python 3.10, install Python 3.10 first.
-
-Recommended Windows command:
+If Python 3.10 is missing, install it with:
 
 ```powershell
 winget install -e --id Python.Python.3.10
 ```
 
-Then close and reopen the terminal and confirm with:
+Then reopen the terminal and confirm `py -0p` shows Python 3.10.
+
+## 3. Open The App Folder
+
+Most app commands are run from:
 
 ```powershell
-py -0p
+cd "App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
 ```
 
-## 3. Install Frontend Dependencies
+The nested folder layout is intentional because the backend scripts rely on the current relative paths.
 
-From the React/Capacitor app folder:
+## 4. Install Frontend Dependencies
+
+From the app folder:
 
 ```powershell
 npm.cmd ci
 ```
 
-This recreates `node_modules` from `package-lock.json`.
+## 5. Create The Environment File
 
-## 4. Create The App Environment File
-
-From the React/Capacitor app folder:
+From the app folder:
 
 ```powershell
 copy .env.example .env
 ```
 
-Edit `.env`.
+Edit `.env` based on your target device.
 
-For Android emulator, use:
+For Android emulator:
 
 ```env
 VITE_ANDROID_API_BASE_URL=http://10.0.2.2/biotech-api
+VITE_ANDROID_API_BASE_URL_FALLBACKS=http://10.0.3.2/biotech-api
 VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://10.0.2.2:8000
 VITE_ANDROID_YOLO_API_BASE_URL=http://10.0.2.2:9000
 ```
 
-For a physical phone on the same Wi-Fi, find this PC's IPv4 address:
+For a physical Android phone on the same Wi-Fi, find your PC IPv4 address:
 
 ```powershell
 ipconfig
 ```
 
-Then use your PC IP, for example:
+Then set:
 
 ```env
-VITE_ANDROID_API_BASE_URL=http://192.168.1.2/biotech-api
-VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://192.168.1.2:8000
-VITE_ANDROID_YOLO_API_BASE_URL=http://192.168.1.2:9000
+VITE_ANDROID_API_BASE_URL=http://<YOUR_PC_IPV4>/biotech-api
+VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://<YOUR_PC_IPV4>:8000
+VITE_ANDROID_YOLO_API_BASE_URL=http://<YOUR_PC_IPV4>:9000
 ```
 
-## 5. Set Up The MySQL Database
+## 6. Set Up The Database And PHP API
 
-Start XAMPP:
+Start XAMPP and enable:
 
-- Apache: Start
-- MySQL: Start
+- Apache
+- MySQL
 
-Open phpMyAdmin:
+Open phpMyAdmin at `http://localhost/phpmyadmin`.
 
-```text
-http://localhost/phpmyadmin
-```
+Create a database named `biotech_dashboard`.
 
-Create a database named:
-
-```text
-biotech_dashboard
-```
-
-Import this file:
+Import:
 
 ```text
 App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database/biotech_db.sql
 ```
 
-Then apply migrations in order from:
+Then apply every SQL file in this folder in chronological order:
 
 ```text
 App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database/migrations
 ```
 
-## 6. Deploy The PHP API To XAMPP
-
-From the React/Capacitor app folder:
+Deploy the PHP API into XAMPP from the app folder:
 
 ```powershell
 robocopy ".\database\api" "C:\xampp\htdocs\biotech-api" /MIR
 ```
 
-Check the API:
-
-```text
-http://localhost/biotech-api/health
-```
-
-It should return a healthy JSON response.
+Verify the API at `http://localhost/biotech-api/health`.
 
 ## 7. Create Python Environments
 
-First check which Python versions are available:
+The two Python services should use Python 3.10.
 
-```powershell
-py -0p
-```
-
-Use Python 3.10 for both services so the new laptop matches the current PC. Do not use Python 3.12 or newer for this project unless you deliberately retest the dependency stack.
-
-From the React/Capacitor app folder, create the homography environment:
+Create the homography environment:
 
 ```powershell
 cd "..\..\homography"
@@ -179,85 +151,92 @@ pip install -r requirements.txt
 deactivate
 ```
 
-If you get `No suitable Python runtime found`, it means Python 3.10 is not installed yet. Install Python 3.10, reopen the terminal, and rerun the commands.
-
-The YOLO model must exist here:
+The YOLO model file must exist here:
 
 ```text
 App tugas akhir/App tugas akhir/YOLO AI/best.pt
 ```
 
-If the file is missing after cloning, run this from the repo root:
+If that file is missing after cloning, rerun:
 
 ```powershell
 git lfs pull
 ```
 
-## 8. Start All Backend Services
+## 8. Start The Backend Services
 
-Go back to the React/Capacitor app folder:
-
-```powershell
-cd "C:\Tugas Akhir Palti\Biotechnology-App-Production\App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
-```
-
-Start services:
+Return to the app folder and run:
 
 ```powershell
 npm.cmd run backend:start
-```
-
-Check services:
-
-```powershell
 npm.cmd run backend:status
 ```
 
-Expected services:
+Expected health endpoints:
 
 - PHP API: `http://localhost/biotech-api/health`
 - Homography: `http://localhost:8000/health`
 - YOLO: `http://localhost:9000/health`
 
-If ports are stuck from an old run:
+If a port is still occupied from an older run:
 
 ```powershell
 npm.cmd run backend:start:force
 ```
 
-## 9. Test In Web Browser
+If Apache and MySQL are already started manually and you only want the Python services:
 
-From the React/Capacitor app folder:
+```powershell
+npm.cmd run backend:start:noxampp
+```
+
+## 9. Run The Web App
+
+From the app folder:
 
 ```powershell
 npm.cmd run dev
 ```
 
-Open the Vite URL shown in the terminal, usually:
+Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
 
-```text
-http://localhost:5173
-```
+## 10. Build And Run Android
 
-This tests the React app in the browser. Camera/Android behavior still needs Android Studio.
-
-## 10. Build And Sync Android
-
-From the React/Capacitor app folder:
+From the app folder:
 
 ```powershell
 npm.cmd run android:sync
-```
-
-This creates the web build and copies it into the Android project.
-
-## 11. Open Android Studio
-
-From the React/Capacitor app folder:
-
-```powershell
 npx cap open android
 ```
+
+In Android Studio:
+
+1. Wait for Gradle sync to finish.
+2. Select an emulator or physical device.
+3. Run the app.
+
+Run `npm.cmd run android:sync` again whenever frontend code or `.env` changes.
+
+## 11. Keep These Files Local Only
+
+Do not commit these local or generated files:
+
+- `.env`
+- `node_modules`
+- Python virtual environments
+- Android `local.properties`
+- Gradle build folders
+- temporary outputs and caches
+
+## 12. Runtime Files That Must Stay In The Repo
+
+These are part of the application runtime and should not be removed:
+
+- `Table 2A.csv`
+- `App tugas akhir/App tugas akhir/YOLO AI/best.pt`
+- `App tugas akhir/App tugas akhir/homography`
+- `App tugas akhir/App tugas akhir/yolo_service`
+- `App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database`
 
 In Android Studio:
 
