@@ -1,77 +1,99 @@
-# Inhibition Zone App Setup
+# Inhibition Zone App - Full Setup Guide 
 
-This repository is the handoff version for running the inhibition-zone analysis system. It includes the React/Capacitor frontend, PHP API, homography service, YOLO inference service, and the breakpoint CSV used for automatic S/I/R suggestions.
+## A. Gambaran Sistem
 
-## 1. Clone The Repository
+Repository ini berisi:
+
+- Frontend React + Vite + Capacitor
+- PHP API (XAMPP Apache)
+- Service Homography (FastAPI)
+- Service YOLO (FastAPI + PyTorch)
+- Database MySQL
+- File breakpoint runtime S/I/R: Table 2A.csv
+
+## B. Install Semua Dependensi Sistem
+
+Jalankan PowerShell as Administrator untuk install awal.
+
+### 1. Install tool utama
+
+```powershell
+winget install -e --id Git.Git
+winget install -e --id GitHub.GitLFS
+winget install -e --id OpenJS.NodeJS.LTS
+winget install -e --id Python.Python.3.10
+winget install -e --id ApacheFriends.Xampp.8.2
+winget install -e --id Google.AndroidStudio
+```
+
+Jika salah satu package tidak tersedia di winget, install manual dari website resmi.
+
+### 2. Install Visual C++ Runtime (penting untuk numpy/opencv/torch)
+
+Jika belum ada, install Microsoft Visual C++ Redistributable 2015-2022 (x64).
+
+### 3. Reopen terminal dan verifikasi
+
+```powershell
+git --version
+git lfs version
+node -v
+npm.cmd -v
+py -0p
+python --version
+java -version
+```
+
+Harus terlihat Python 3.10 pada output py -0p.
+
+## C. Clone Repository
 
 ```powershell
 git clone <REPOSITORY_URL>
 cd Inhibition-Zone-App
+git lfs install
 git lfs pull
 ```
 
-`git lfs pull` is required because the YOLO model is stored with Git LFS.
-
-## 2. Install Required Software
-
-Install these first:
-
-- Git
-- Git LFS
-- Node.js LTS
-- Python 3.10
-- XAMPP with Apache and MySQL
-- Android Studio with Android SDK
-- Android Studio Embedded JDK or JDK 17
-
-Check the tools:
+Verifikasi file model YOLO ada:
 
 ```powershell
-node -v
-npm.cmd -v
-py -0p
-git lfs version
+Test-Path "App tugas akhir\App tugas akhir\YOLO AI\best.pt"
 ```
 
-Use `npm.cmd` in PowerShell on Windows.
+Kalau hasil False, jalankan ulang git lfs pull.
 
-If Python 3.10 is missing, install it with:
+## D. Struktur Folder Kerja
 
-```powershell
-winget install -e --id Python.Python.3.10
-```
-
-Then reopen the terminal and confirm `py -0p` shows Python 3.10.
-
-## 3. Open The App Folder
-
-Most app commands are run from:
+Sebagian besar command dijalankan dari folder app ini:
 
 ```powershell
 cd "App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
 ```
 
-The nested folder layout is intentional because the backend scripts rely on the current relative paths.
+Layout nested folder jangan diubah, karena script backend bergantung pada relative path saat ini.
 
-## 4. Install Frontend Dependencies
+## E. Setup Frontend (Node)
 
-From the app folder:
+Dari folder app:
 
 ```powershell
 npm.cmd ci
 ```
 
-## 5. Create The Environment File
+Jika npm error permission di PowerShell, tetap gunakan npm.cmd (bukan npm).
 
-From the app folder:
+## F. Setup Environment Variable Frontend
+
+Dari folder app:
 
 ```powershell
 copy .env.example .env
 ```
 
-Edit `.env` based on your target device.
+Isi file .env.
 
-For Android emulator:
+### 1. Untuk Android Emulator
 
 ```env
 VITE_ANDROID_API_BASE_URL=http://10.0.2.2/biotech-api
@@ -80,13 +102,15 @@ VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://10.0.2.2:8000
 VITE_ANDROID_YOLO_API_BASE_URL=http://10.0.2.2:9000
 ```
 
-For a physical Android phone on the same Wi-Fi, find your PC IPv4 address:
+### 2. Untuk HP fisik (satu Wi-Fi dengan laptop)
+
+Cari IPv4 laptop:
 
 ```powershell
 ipconfig
 ```
 
-Then set:
+Lalu isi:
 
 ```env
 VITE_ANDROID_API_BASE_URL=http://<YOUR_PC_IPV4>/biotech-api
@@ -94,53 +118,66 @@ VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://<YOUR_PC_IPV4>:8000
 VITE_ANDROID_YOLO_API_BASE_URL=http://<YOUR_PC_IPV4>:9000
 ```
 
-## 6. Set Up The Database And PHP API
+Catatan:
 
-Start XAMPP and enable:
+- Buka firewall untuk port 80, 8000, 9000 jika akses dari HP gagal.
+- Jangan commit file .env.
 
-- Apache
-- MySQL
+## G. Setup Database dan PHP API
 
-Open phpMyAdmin at `http://localhost/phpmyadmin`.
+### 1. Start service XAMPP
 
-Create a database named `biotech_dashboard`.
+- Start Apache
+- Start MySQL
 
-Import:
+### 2. Buat database
 
-```text
+- Buka http://localhost/phpmyadmin
+- Create database: biotech_dashboard
+
+### 3. Import schema awal
+
+Import file:
+
 App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database/biotech_db.sql
-```
 
-Then apply every SQL file in this folder in chronological order:
+### 4. Jalankan migration SQL
 
-```text
+Execute semua file SQL di folder berikut secara urut (nama file ascending):
+
 App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database/migrations
-```
 
-Deploy the PHP API into XAMPP from the app folder:
+### 5. Deploy API PHP ke htdocs
+
+Dari folder app:
 
 ```powershell
 robocopy ".\database\api" "C:\xampp\htdocs\biotech-api" /MIR
 ```
 
-Verify the API at `http://localhost/biotech-api/health`.
+### 6. Verifikasi API
 
-## 7. Create Python Environments
+Buka URL berikut, harus return JSON sehat:
 
-The two Python services should use Python 3.10.
+http://localhost/biotech-api/health
 
-Create the homography environment:
+## H. Setup Python Environment (2 service)
+
+Project ini menggunakan dua venv terpisah agar dependency tidak bentrok.
+
+### 1. Homography service
 
 ```powershell
-cd "..\..\homography"
+cd "App tugas akhir\App tugas akhir\homography"
 py -3.10 -m venv .venv-homography
 .\.venv-homography\Scripts\Activate.ps1
 python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
+python -c "import fastapi, cv2, numpy; print('homography deps OK')"
 deactivate
 ```
 
-Create the YOLO environment:
+### 2. YOLO service
 
 ```powershell
 cd "..\yolo_service"
@@ -148,141 +185,166 @@ py -3.10 -m venv .venv-yolo
 .\.venv-yolo\Scripts\Activate.ps1
 python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
+python -c "import torch, torchvision, cv2, fastapi; print('yolo deps OK')"
 deactivate
 ```
 
-The YOLO model file must exist here:
-
-```text
-App tugas akhir/App tugas akhir/YOLO AI/best.pt
-```
-
-If that file is missing after cloning, rerun:
+Jika install pycocotools gagal di Windows:
 
 ```powershell
-git lfs pull
+pip install pycocotools-windows
 ```
 
-## 8. Start The Backend Services
+## I. Start Semua Backend Service
 
-Return to the app folder and run:
+Kembali ke folder app:
 
 ```powershell
+cd "..\Biotechnology App Dashboard\Biotechnology App Dashboard"
 npm.cmd run backend:start
 npm.cmd run backend:status
 ```
 
-Expected health endpoints:
+Endpoint health yang harus aktif:
 
-- PHP API: `http://localhost/biotech-api/health`
-- Homography: `http://localhost:8000/health`
-- YOLO: `http://localhost:9000/health`
+- http://localhost/biotech-api/health
+- http://localhost:8000/health
+- http://localhost:9000/health
 
-If a port is still occupied from an older run:
+Command penting:
 
-```powershell
-npm.cmd run backend:start:force
-```
+- Force cleanup port: npm.cmd run backend:start:force
+- Start Python only (tanpa start XAMPP): npm.cmd run backend:start:noxampp
+- Stop backend: npm.cmd run backend:stop
 
-If Apache and MySQL are already started manually and you only want the Python services:
+## J. Jalankan Frontend Web
 
-```powershell
-npm.cmd run backend:start:noxampp
-```
-
-## 9. Run The Web App
-
-From the app folder:
+Dari folder app:
 
 ```powershell
 npm.cmd run dev
 ```
 
-Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
+Buka URL Vite yang tampil (biasanya http://localhost:5173).
 
-## 10. Build And Run Android
+## K. Build dan Jalankan Android
 
-From the app folder:
+### 1. Sinkronisasi Capacitor
 
 ```powershell
 npm.cmd run android:sync
+```
+
+### 2. Buka project Android Studio
+
+```powershell
 npx cap open android
 ```
 
-In Android Studio:
+### 3. Di Android Studio
 
-1. Wait for Gradle sync to finish.
-2. Select an emulator or physical device.
-3. Run the app.
+1. Tunggu Gradle Sync selesai.
+2. Jika diminta JDK, pilih Embedded JDK atau JDK 17.
+3. Pilih emulator atau device fisik.
+4. Klik Run.
 
-Run `npm.cmd run android:sync` again whenever frontend code or `.env` changes.
+Setiap ada perubahan frontend atau .env, wajib jalankan ulang npm.cmd run android:sync.
 
-## 11. Keep These Files Local Only
+## L. Setup Emulator (Jika Belum Ada)
 
-Do not commit these local or generated files:
+Di Android Studio:
 
-- `.env`
-- `node_modules`
-- Python virtual environments
-- Android `local.properties`
-- Gradle build folders
-- temporary outputs and caches
+1. More Actions > Virtual Device Manager.
+2. Create Device (misalnya Pixel 4/5).
+3. Pilih system image Android 13+ (x86_64).
+4. Finish dan start emulator.
 
-## 12. Runtime Files That Must Stay In The Repo
-
-These are part of the application runtime and should not be removed:
-
-- `Table 2A.csv`
-- `App tugas akhir/App tugas akhir/YOLO AI/best.pt`
-- `App tugas akhir/App tugas akhir/homography`
-- `App tugas akhir/App tugas akhir/yolo_service`
-- `App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database`
-
-In Android Studio:
-
-1. Wait for Gradle Sync.
-2. Select Embedded JDK or JDK 17 if asked.
-3. Select emulator or physical phone.
-4. Click Run.
-
-## 12. Daily Run After Setup
+## M. Daily Run (Setelah Setup Selesai)
 
 Dari folder app:
-"C:\Calvin Institute\Tugas Akhir Production\Inhibition-Zone-App\App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
-
-Start backend:
 
 ```powershell
 npm.cmd run backend:start
 npm.cmd run backend:status
-```
-
-Build/sync Android:
-
-```powershell
 npm.cmd run android:sync
-```
-
-Open Android Studio:
-
-```powershell
 npx cap open android
 ```
 
-Or use the shortcut:
+Atau gunakan shortcut:
 
 ```powershell
 npm.cmd run android:daily
 ```
 
-If PowerShell blocks `npm`:
+## N. Troubleshooting Umum
+
+### 1. py -3.10 tidak ditemukan
+
+- Install ulang Python 3.10.
+- Pastikan Add Python to PATH aktif.
+- Tutup dan buka terminal baru.
+- Cek ulang dengan py -0p.
+
+### 2. ExecutionPolicy block saat activate venv
+
+Di PowerShell session saat ini:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+```
+
+### 3. npm tidak jalan di PowerShell
+
+Gunakan npm.cmd, contoh:
 
 ```powershell
 npm.cmd ci
-npm.cmd run android:sync
 ```
 
-If Gradle JDK is invalid:
+### 4. Port 8000/9000 sudah dipakai
+
+```powershell
+npm.cmd run backend:start:force
+```
+
+### 5. Android tidak bisa akses backend lokal
+
+- Emulator harus pakai 10.0.2.2.
+- Device fisik harus pakai IPv4 laptop.
+- Pastikan laptop dan HP satu Wi-Fi.
+- Buka firewall port 80, 8000, 9000.
+
+### 6. API health gagal
+
+- Cek Apache MySQL di XAMPP harus running.
+- Pastikan folder C:\xampp\htdocs\biotech-api sudah terisi file API terbaru.
+
+### 7. Model YOLO tidak ditemukan
+
+```powershell
+git lfs pull
+```
+
+Lalu cek ulang file best.pt.
+
+### 8. Build Android gagal karena JDK/Gradle
 
 - Android Studio > Settings > Build, Execution, Deployment > Build Tools > Gradle
-- Set Gradle JDK to Embedded JDK or JDK 17.
+- Set Gradle JDK ke Embedded JDK atau JDK 17
+- Sync Project with Gradle Files
+
+## O. File Lokal yang Tidak Boleh Di-commit
+
+- .env
+- node_modules
+- semua folder virtual environment Python
+- Android local.properties
+- folder build/cache/outputs
+
+## P. File Runtime yang Harus Tetap Ada di Repo
+
+- Table 2A.csv
+- App tugas akhir/App tugas akhir/YOLO AI/best.pt
+- App tugas akhir/App tugas akhir/homography
+- App tugas akhir/App tugas akhir/yolo_service
+- App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database

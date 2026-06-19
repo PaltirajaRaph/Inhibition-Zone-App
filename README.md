@@ -28,7 +28,4 @@ This repository contains the handoff version of the Inhibition Zone App for anti
 - `App tugas akhir/App tugas akhir/YOLO AI/best.pt`
 - `App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard`
 
-## Notes
 
-- This branch is intended for project handoff and deployment setup.
-- Local/generated files such as `.env`, virtual environments, `node_modules`, and Android build outputs should not be committed.
