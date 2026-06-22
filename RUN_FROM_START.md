@@ -1,23 +1,4 @@
-# Inhibition Zone App - Beginner-Friendly Complete Setup and Development Guide
-
-This document is a full walkthrough for beginners.
-It explains how to run the app from zero and how to start developing it safely on your own laptop.
-
-Contents:
-1. What this project contains
-2. What you need before starting
-3. First-time installation on a new laptop
-4. Clone and verify repository
-5. Frontend setup (React + Vite + Capacitor)
-6. Database and PHP API setup (XAMPP or WAMP)
-7. Python services setup (Homography and YOLO)
-8. Run the app in web mode (no Android Studio)
-9. Run the app in Android Studio
-10. Daily development workflow
-11. Git workflow for individual development
-12. Troubleshooting and fixes
-13. What must not be committed
-
+# Inhibition Zone App
 ## 1. What This Project Contains
 
 The app consists of multiple parts that must work together.
@@ -39,14 +20,7 @@ If one endpoint is down, some app features will fail.
 
 ## 2. What You Need Before Starting
 
-Minimum recommended:
-
-- Windows 10/11 (64-bit)
-- 16 GB RAM (recommended), 8 GB minimum
-- Enough free disk space for Python dependencies and Android SDK
-- Stable internet for dependency downloads
-
-If using NVIDIA GPU for YOLO acceleration:
+If using NVIDIA GPU for acceleration:
 
 - Install recent NVIDIA driver
 - Install Microsoft Visual C++ Redistributable 2015-2022 x64
@@ -126,20 +100,25 @@ copy .env.example .env
 Use:
 
 VITE_ANDROID_API_BASE_URL=http://10.0.2.2/biotech-api
+
 VITE_ANDROID_API_BASE_URL_FALLBACKS=http://10.0.3.2/biotech-api
+
 VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://10.0.2.2:8000
+
 VITE_ANDROID_YOLO_API_BASE_URL=http://10.0.2.2:9000
 
 ### 5.2 Configure .env for physical phone (same Wi-Fi)
 
-Find laptop IPv4:
+Find Device's IPv4:
 
 ipconfig
 
 Then set:
 
 VITE_ANDROID_API_BASE_URL=http://<YOUR_PC_IPV4>/biotech-api
+
 VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://<YOUR_PC_IPV4>:8000
+
 VITE_ANDROID_YOLO_API_BASE_URL=http://<YOUR_PC_IPV4>:9000
 
 Notes:
@@ -175,7 +154,7 @@ App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Da
 
 ### 6.4 Run migrations
 
-Execute all SQL files in ascending name order from:
+Import all SQL files in chronological order from:
 
 App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database/migrations
 
