@@ -22,34 +22,84 @@ git lfs pull
 
 ## 2. Install Required Software
 
-Install:
+For a fresh Windows PC, install tools in this order.
 
-- Git
-- Git LFS
-- Node.js LTS
-- Python 3.10
-- XAMPP (Apache + MySQL)
-- Android Studio + Android SDK
-- Android Studio Embedded JDK or JDK 17
-- ngrok
+### 2.1 Install Core CLI Tools (recommended via winget)
 
-Verify:
+Open PowerShell as Administrator and run:
 
 ```powershell
+winget install -e --id Git.Git
+winget install -e --id GitHub.GitLFS
+winget install -e --id OpenJS.NodeJS.LTS
+winget install -e --id Python.Python.3.10
+winget install -e --id Ngrok.Ngrok
+```
+
+If any package ID is unavailable on your machine, install it from official websites, then reopen terminal.
+
+### 2.2 Install GUI Tools
+
+Install manually:
+
+- XAMPP (Apache + MySQL)
+- Android Studio (includes Android SDK manager)
+
+In Android Studio, make sure these are installed:
+
+- Android SDK Platform + Build-Tools (target API used by project)
+- Android SDK Platform-Tools
+- Android Emulator (if you use emulator)
+- Embedded JDK (or use JDK 17)
+
+### 2.3 Verify PATH And Install Success
+
+Open a new terminal (important) and verify:
+
+```powershell
+git --version
+git lfs version
 node -v
 npm.cmd -v
 py -0p
-git lfs version
 ngrok version
 ```
 
-If Python 3.10 is missing:
+If `ngrok` is not recognized, it is not installed correctly or PATH is not refreshed.
+
+Quick check:
+
+```powershell
+where.exe ngrok
+```
+
+If empty result:
+
+1. Reopen terminal and run `ngrok version` again.
+2. Reinstall with `winget install -e --id Ngrok.Ngrok`.
+3. If still failing, install ngrok manually and ensure folder containing `ngrok.exe` is in PATH.
+
+If Python 3.10 is missing, run:
 
 ```powershell
 winget install -e --id Python.Python.3.10
 ```
 
 Then reopen terminal and run `py -0p` again.
+
+### 2.4 ngrok First-Time Auth (required once)
+
+After signing up/logging in to ngrok dashboard, set your authtoken:
+
+```powershell
+ngrok config add-authtoken <YOUR_NGROK_AUTHTOKEN>
+```
+
+Verify config:
+
+```powershell
+ngrok config check
+```
 
 ## 3. Go To App Folder
 
@@ -384,7 +434,19 @@ Fix order:
 
 1. Stop other ngrok sessions.
 2. Use one tunnel only: `npm.cmd run gateway:ngrok`.
-3. This script already uses `--pooling-enabled`.
+3. The script uses `ngrok http 8088` for widest version compatibility.
+
+### ngrok `unknown flag: --pooling-enabled`
+
+Cause: ngrok version on that PC does not support the `--pooling-enabled` flag.
+
+Fix: use compatible command:
+
+```powershell
+ngrok http 8088
+```
+
+This repo now uses that command in `npm.cmd run gateway:ngrok`.
 
 ### Data does not appear immediately after app reopen/update
 
