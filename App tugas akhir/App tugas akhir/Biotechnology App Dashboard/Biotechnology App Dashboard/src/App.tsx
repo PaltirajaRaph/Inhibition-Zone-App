@@ -48,6 +48,12 @@ const REQUEST_TIMEOUT_MS = 5000;
 const SESSION_KEY = 'biotech.session.v1';
 const ANALYSES_STORAGE_PREFIX = 'biotech.analyses.v2';
 const ANALYTICS_AUTO_REFRESH_MS = 10000;
+const YOLO_BASE_KEY = 'biotech.yolo_api_base';
+const YOLO_FALLBACKS_KEY = 'biotech.yolo_api_fallbacks';
+const YOLO_ENV_SIGNATURE_KEY = 'biotech.yolo_env_signature';
+const HOMOGRAPHY_BASE_KEY = 'biotech.homography_api_base';
+const HOMOGRAPHY_FALLBACKS_KEY = 'biotech.homography_api_fallbacks';
+const HOMOGRAPHY_ENV_SIGNATURE_KEY = 'biotech.homography_env_signature';
 const ANALYTICS_WINDOW_BY_UNIT: Record<AnalyticsTrendUnit, number> = {
   day: 7,
   week: 12,
@@ -66,6 +72,65 @@ const parseApiBases = (value?: string) => {
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
     .map(trimTrailingSlash);
+};
+
+const getYoloEnvSignature = () => {
+  const envPublicBase = (import.meta.env.VITE_PUBLIC_YOLO_API_BASE_URL as string | undefined)?.trim() || '';
+  const envPublicFallbacks =
+    (import.meta.env.VITE_PUBLIC_YOLO_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+  const envAndroidBase = (import.meta.env.VITE_ANDROID_YOLO_API_BASE_URL as string | undefined)?.trim() || '';
+  const envAndroidFallbacks =
+    (import.meta.env.VITE_ANDROID_YOLO_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+  return [envPublicBase, envPublicFallbacks, envAndroidBase, envAndroidFallbacks].join('|');
+};
+
+const getHomographyEnvSignature = () => {
+  const envBase = (import.meta.env.VITE_HOMOGRAPHY_API_BASE_URL as string | undefined)?.trim() || '';
+  const envFallbacks =
+    (import.meta.env.VITE_HOMOGRAPHY_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+  const envAndroidBase = (import.meta.env.VITE_ANDROID_HOMOGRAPHY_API_BASE_URL as string | undefined)?.trim() || '';
+  const envAndroidFallbacks =
+    (import.meta.env.VITE_ANDROID_HOMOGRAPHY_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+  const envPublicApiBase = (import.meta.env.VITE_PUBLIC_API_BASE_URL as string | undefined)?.trim() || '';
+  const envPublicApiFallbacks =
+    (import.meta.env.VITE_PUBLIC_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+  const envAndroidApiBase = (import.meta.env.VITE_ANDROID_API_BASE_URL as string | undefined)?.trim() || '';
+  const envAndroidApiFallbacks =
+    (import.meta.env.VITE_ANDROID_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+  return [
+    envBase,
+    envFallbacks,
+    envAndroidBase,
+    envAndroidFallbacks,
+    envPublicApiBase,
+    envPublicApiFallbacks,
+    envAndroidApiBase,
+    envAndroidApiFallbacks,
+  ].join('|');
+};
+
+const syncInferenceOverridesWithEnv = () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const currentYoloSignature = getYoloEnvSignature();
+    const lastYoloSignature = localStorage.getItem(YOLO_ENV_SIGNATURE_KEY) || '';
+    if (currentYoloSignature !== lastYoloSignature) {
+      localStorage.removeItem(YOLO_BASE_KEY);
+      localStorage.removeItem(YOLO_FALLBACKS_KEY);
+      localStorage.setItem(YOLO_ENV_SIGNATURE_KEY, currentYoloSignature);
+    }
+
+    const currentHomographySignature = getHomographyEnvSignature();
+    const lastHomographySignature = localStorage.getItem(HOMOGRAPHY_ENV_SIGNATURE_KEY) || '';
+    if (currentHomographySignature !== lastHomographySignature) {
+      localStorage.removeItem(HOMOGRAPHY_BASE_KEY);
+      localStorage.removeItem(HOMOGRAPHY_FALLBACKS_KEY);
+      localStorage.setItem(HOMOGRAPHY_ENV_SIGNATURE_KEY, currentHomographySignature);
+    }
+  } catch (error) {
+    console.error('Failed to sync inference overrides with env:', error);
+  }
 };
 
 const uniqueApiBases = (items: string[]) => {
@@ -610,6 +675,10 @@ export default function App() {
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsUpdatedAt, setAnalyticsUpdatedAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    syncInferenceOverridesWithEnv();
+  }, []);
 
   useEffect(() => {
     currentViewRef.current = currentView;

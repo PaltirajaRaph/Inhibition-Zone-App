@@ -338,6 +338,12 @@ In Android Studio:
 
 Run `npm.cmd run android:sync` every time `.env` or frontend code changes.
 
+Inference URL override behavior:
+
+- The app now auto-detects `.env` URL changes on startup.
+- If `.env` inference URLs change, old saved Settings overrides are reset automatically.
+- This ensures the newest URL is used after sync/build without manual reset.
+
 ## 11. Daily Run (Recommended Sequence)
 
 From app folder:
