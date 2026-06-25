@@ -1,6 +1,7 @@
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import type { AnalysisData } from '../App';
+import { formatDiameterMm } from '../utils/diameterFormat';
 
 interface AnalysisDetailProps {
   analysis: AnalysisData;
@@ -39,8 +40,8 @@ export function AnalysisDetail({ analysis }: AnalysisDetailProps) {
   if (antibioticB && analysis.secondaryResult) {
     summaryLines.push(`Response to ${antibioticB}: ${secondary.label}.`);
   }
-  if (analysis.diameter) {
-    summaryLines.push(`Measured inhibition zone diameter: ${analysis.diameter} mm.`);
+  if (typeof analysis.diameter === 'number') {
+    summaryLines.push(`Measured inhibition zone diameter: ${formatDiameterMm(analysis.diameter)}.`);
   }
   if (summaryLines.length === 0) {
     summaryLines.push('Not enough data to build a summary.');

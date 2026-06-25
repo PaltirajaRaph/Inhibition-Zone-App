@@ -134,11 +134,22 @@ function Stop-PortOwners {
 function Get-PythonCommand {
     param([string]$ServiceDir)
 
-    $venvCandidates = @(
-        (Join-Path $ServiceDir '.venv\Scripts\python.exe'),
-        (Join-Path $ServiceDir '.venv-homography\Scripts\python.exe'),
-        (Join-Path $ServiceDir '.venv-yolo\Scripts\python.exe')
-    )
+    $serviceName = Split-Path -Path $ServiceDir -Leaf
+    $venvCandidates = @()
+
+    if ($serviceName -ieq 'homography') {
+        $venvCandidates += (Join-Path $ServiceDir '.venv-homography\Scripts\python.exe')
+        $venvCandidates += (Join-Path $ServiceDir '.venv\Scripts\python.exe')
+        $venvCandidates += (Join-Path $ServiceDir '.venv-yolo\Scripts\python.exe')
+    } elseif ($serviceName -ieq 'yolo_service') {
+        $venvCandidates += (Join-Path $ServiceDir '.venv-yolo\Scripts\python.exe')
+        $venvCandidates += (Join-Path $ServiceDir '.venv\Scripts\python.exe')
+        $venvCandidates += (Join-Path $ServiceDir '.venv-homography\Scripts\python.exe')
+    } else {
+        $venvCandidates += (Join-Path $ServiceDir '.venv\Scripts\python.exe')
+        $venvCandidates += (Join-Path $ServiceDir '.venv-homography\Scripts\python.exe')
+        $venvCandidates += (Join-Path $ServiceDir '.venv-yolo\Scripts\python.exe')
+    }
 
     foreach ($candidate in $venvCandidates) {
         if (Test-Path $candidate) {

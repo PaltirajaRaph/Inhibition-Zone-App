@@ -8,6 +8,7 @@ const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1280;
 const HOMOGRAPHY_BASE_KEY = 'biotech.homography_api_base';
 const HOMOGRAPHY_FALLBACKS_KEY = 'biotech.homography_api_fallbacks';
+const HOMOGRAPHY_ENV_SIGNATURE_KEY = 'biotech.homography_env_signature';
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 
@@ -54,6 +55,46 @@ const unique = (items: string[]) => {
 	return output;
 };
 
+const getEnvSignature = () => {
+	const envBase = (import.meta.env.VITE_HOMOGRAPHY_API_BASE_URL as string | undefined)?.trim() || '';
+	const envFallbacks =
+		(import.meta.env.VITE_HOMOGRAPHY_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+	const envAndroidBase = (import.meta.env.VITE_ANDROID_HOMOGRAPHY_API_BASE_URL as string | undefined)?.trim() || '';
+	const envAndroidFallbacks =
+		(import.meta.env.VITE_ANDROID_HOMOGRAPHY_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+	const envPublicApiBase = (import.meta.env.VITE_PUBLIC_API_BASE_URL as string | undefined)?.trim() || '';
+	const envPublicApiFallbacks =
+		(import.meta.env.VITE_PUBLIC_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+	const envAndroidApiBase = (import.meta.env.VITE_ANDROID_API_BASE_URL as string | undefined)?.trim() || '';
+	const envAndroidApiFallbacks =
+		(import.meta.env.VITE_ANDROID_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+	return [
+		envBase,
+		envFallbacks,
+		envAndroidBase,
+		envAndroidFallbacks,
+		envPublicApiBase,
+		envPublicApiFallbacks,
+		envAndroidApiBase,
+		envAndroidApiFallbacks,
+	].join('|');
+};
+
+const syncOverridesWithEnv = () => {
+	if (typeof window === 'undefined') return;
+	try {
+		const currentSignature = getEnvSignature();
+		const lastSignature = localStorage.getItem(HOMOGRAPHY_ENV_SIGNATURE_KEY) || '';
+		if (currentSignature === lastSignature) return;
+
+		localStorage.removeItem(HOMOGRAPHY_BASE_KEY);
+		localStorage.removeItem(HOMOGRAPHY_FALLBACKS_KEY);
+		localStorage.setItem(HOMOGRAPHY_ENV_SIGNATURE_KEY, currentSignature);
+	} catch (error) {
+		console.error('Failed to sync homography override with env:', error);
+	}
+};
+
 const getWebDefault = () => {
 	if (typeof window === 'undefined') return DEFAULT_WEB_HOMOGRAPHY_BASE;
 	const hostname = window.location.hostname;
@@ -64,6 +105,8 @@ const getWebDefault = () => {
 };
 
 const getCandidates = () => {
+	syncOverridesWithEnv();
+
 	const localBase = readLocalOverride(HOMOGRAPHY_BASE_KEY).trim();
 	const localFallbacks = parseBases(readLocalOverride(HOMOGRAPHY_FALLBACKS_KEY));
 	const envBase = (import.meta.env.VITE_HOMOGRAPHY_API_BASE_URL as string | undefined)?.trim() || '';
@@ -140,6 +183,27 @@ const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: numbe
 	} finally {
 		window.clearTimeout(timeoutId);
 	}
+};
+
+const withTunnelBypassHeader = (base: string, init: RequestInit): RequestInit => {
+	const headers = new Headers(init.headers || {});
+
+	if (base.includes('.loca.lt') && !headers.has('bypass-tunnel-reminder')) {
+		headers.set('bypass-tunnel-reminder', 'true');
+	}
+
+	const isNgrokBase =
+		base.includes('.ngrok-free.dev') || base.includes('.ngrok-free.app') || base.includes('.ngrok.app');
+	if (isNgrokBase && !headers.has('ngrok-skip-browser-warning')) {
+		headers.set('ngrok-skip-browser-warning', 'true');
+	}
+
+	if ([...headers.keys()].length === 0) return init;
+
+	return {
+		...init,
+		headers,
+	};
 };
 
 const blobToDataUrl = (blob: Blob) =>
@@ -221,7 +285,8 @@ export const processImageViaHomography = async (imageSrcOrDataUrl: string) => {
 	const healthyCandidates: string[] = [];
 	for (const base of candidates) {
 		try {
-			const health = await fetchWithTimeout(`${base}/health`, { method: 'GET' }, probeTimeoutMs);
+			const healthInit = withTunnelBypassHeader(base, { method: 'GET' });
+			const health = await fetchWithTimeout(`${base}/health`, healthInit, probeTimeoutMs);
 			if (health.ok) healthyCandidates.push(base);
 		} catch {
 			// ignore probe errors and let main request flow handle fallback
@@ -238,7 +303,8 @@ export const processImageViaHomography = async (imageSrcOrDataUrl: string) => {
 			const form = new FormData();
 			form.append('file', file);
 
-			const res = await fetchWithTimeout(`${base}/homography?format=jpg`, { method: 'POST', body: form }, timeoutMs);
+			const requestInit = withTunnelBypassHeader(base, { method: 'POST', body: form });
+			const res = await fetchWithTimeout(`${base}/homography?format=jpg`, requestInit, timeoutMs);
 			if (!res.ok) {
 				failedBases.push(`${base} (HTTP ${res.status})`);
 				lastError = new Error(`HTTP ${res.status}`);

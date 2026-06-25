@@ -36,6 +36,14 @@ analyzer = YoloAnalyzer(
 )
 
 
+def round_diameter_mm(value: float | None) -> float | None:
+    if value is None:
+        return None
+    if not np.isfinite(value):
+        return None
+    return float(round(float(value)))
+
+
 @app.get("/health")
 def health():
     return {
@@ -72,7 +80,7 @@ async def yolo_analyze(
         "success": True,
         "data": {
             "processedImage": processed_image,
-            "diameterMm": result.zone_diameter_mm,
+            "diameterMm": round_diameter_mm(result.zone_diameter_mm),
             "diskDiameterPx": result.disk_diameter_px,
             "zoneDiameterPx": result.zone_diameter_px,
             "scaleMmPerPx": result.scale_mm_per_px,
@@ -82,7 +90,7 @@ async def yolo_analyze(
                     "index": measurement.index,
                     "label": measurement.label,
                     "result": measurement.result,
-                    "diameterMm": measurement.diameter_mm,
+                    "diameterMm": round_diameter_mm(measurement.diameter_mm),
                     "diskDiameterPx": measurement.disk_diameter_px,
                     "zoneDiameterPx": measurement.zone_diameter_px,
                     "scaleMmPerPx": measurement.scale_mm_per_px,

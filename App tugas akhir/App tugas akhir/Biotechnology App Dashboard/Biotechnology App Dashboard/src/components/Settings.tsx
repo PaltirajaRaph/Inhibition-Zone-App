@@ -12,6 +12,23 @@ const YOLO_FALLBACKS_KEY = 'biotech.yolo_api_fallbacks';
 const HOMOGRAPHY_BASE_KEY = 'biotech.homography_api_base';
 const HOMOGRAPHY_FALLBACKS_KEY = 'biotech.homography_api_fallbacks';
 
+const DEFAULT_YOLO_BASE =
+	(import.meta.env.VITE_ANDROID_YOLO_API_BASE_URL as string | undefined)?.trim() ||
+	(import.meta.env.VITE_PUBLIC_YOLO_API_BASE_URL as string | undefined)?.trim() ||
+	'';
+const DEFAULT_YOLO_FALLBACKS =
+	(import.meta.env.VITE_ANDROID_YOLO_API_BASE_URL_FALLBACKS as string | undefined)?.trim() ||
+	(import.meta.env.VITE_PUBLIC_YOLO_API_BASE_URL_FALLBACKS as string | undefined)?.trim() ||
+	'';
+const DEFAULT_HOMOGRAPHY_BASE =
+	(import.meta.env.VITE_ANDROID_HOMOGRAPHY_API_BASE_URL as string | undefined)?.trim() ||
+	(import.meta.env.VITE_HOMOGRAPHY_API_BASE_URL as string | undefined)?.trim() ||
+	'';
+const DEFAULT_HOMOGRAPHY_FALLBACKS =
+	(import.meta.env.VITE_ANDROID_HOMOGRAPHY_API_BASE_URL_FALLBACKS as string | undefined)?.trim() ||
+	(import.meta.env.VITE_HOMOGRAPHY_API_BASE_URL_FALLBACKS as string | undefined)?.trim() ||
+	'';
+
 const safeReadStorage = (key: string) => {
 	if (typeof window === 'undefined') return '';
 	try {
@@ -70,10 +87,12 @@ export function Settings({
 	const [newPassword, setNewPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
 	const [isSaving, setIsSaving] = useState(false);
-	const [yoloBaseUrl, setYoloBaseUrl] = useState(() => safeReadStorage(YOLO_BASE_KEY));
-	const [yoloFallbacks, setYoloFallbacks] = useState(() => safeReadStorage(YOLO_FALLBACKS_KEY));
-	const [homographyBaseUrl, setHomographyBaseUrl] = useState(() => safeReadStorage(HOMOGRAPHY_BASE_KEY));
-	const [homographyFallbacks, setHomographyFallbacks] = useState(() => safeReadStorage(HOMOGRAPHY_FALLBACKS_KEY));
+	const [yoloBaseUrl, setYoloBaseUrl] = useState(() => safeReadStorage(YOLO_BASE_KEY) || DEFAULT_YOLO_BASE);
+	const [yoloFallbacks, setYoloFallbacks] = useState(() => safeReadStorage(YOLO_FALLBACKS_KEY) || DEFAULT_YOLO_FALLBACKS);
+	const [homographyBaseUrl, setHomographyBaseUrl] = useState(() => safeReadStorage(HOMOGRAPHY_BASE_KEY) || DEFAULT_HOMOGRAPHY_BASE);
+	const [homographyFallbacks, setHomographyFallbacks] = useState(
+		() => safeReadStorage(HOMOGRAPHY_FALLBACKS_KEY) || DEFAULT_HOMOGRAPHY_FALLBACKS,
+	);
 
 	const effectiveRole = currentRole === 'admin' || currentRole === 'member' ? currentRole : null;
 	const effectiveUsername = (currentUsername || '').trim();

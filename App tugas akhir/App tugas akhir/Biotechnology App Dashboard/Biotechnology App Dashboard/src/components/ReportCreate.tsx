@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { antibioticsData } from './AntibioticsReference';
 import { compactReportId } from '../utils/analysisId';
+import { formatDiameterMm } from '../utils/diameterFormat';
 import { inferSirResult, sirAntibioticOptions } from '../utils/sirBreakpoints';
 
 const parseTagsInput = (value: string): string[] => {
@@ -36,8 +37,7 @@ const RESULT_OPTIONS: Array<{ value: ResistanceResult; label: string }> = [
 const todayIsoDate = () => new Date().toISOString().split('T')[0];
 
 const formatDiameter = (value?: number) => {
-	if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
-	return `${value.toFixed(2)} mm`;
+	return formatDiameterMm(value, { placeholder: '-' });
 };
 
 const getResultInfo = (result?: ResistanceResult | '') => {

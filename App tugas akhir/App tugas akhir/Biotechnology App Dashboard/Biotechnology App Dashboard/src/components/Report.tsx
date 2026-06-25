@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import type { AnalysisData } from '../App';
 import { compactReportId } from '../utils/analysisId';
+import { formatDiameterMm } from '../utils/diameterFormat';
 import { getSampleDisplayLabel } from '../utils/sampleGrouping';
 
 const createMockProcessedImage = (diameter?: number) => {
@@ -35,7 +36,7 @@ const createMockProcessedImage = (diameter?: number) => {
 		ctx.stroke();
 		ctx.fillStyle = '#000000';
 		ctx.font = 'bold 16px Arial';
-		ctx.fillText(`${diameter || 0} mm`, 210, 195);
+		ctx.fillText(formatDiameterMm(diameter, { placeholder: '0 mm' }), 210, 195);
 
 		return canvas.toDataURL('image/png');
 	}
@@ -179,9 +180,7 @@ export default function Report({ analysis, relatedAnalyses = [analysis], onBack,
 	const reportProcessedImage = firstTextValue(reportItems, (item) => item.processedImage);
 	const primaryDiameter = sampleRows.find((row) => typeof row.diameter === 'number')?.diameter ?? analysis.diameter;
 
-	const formatDiameter = (value?: number) => {
-		return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)} mm` : '###';
-	};
+	const formatDiameter = (value?: number) => formatDiameterMm(value, { placeholder: '###' });
 
 	const handleDownloadCsv = () => {
 		const rows = [

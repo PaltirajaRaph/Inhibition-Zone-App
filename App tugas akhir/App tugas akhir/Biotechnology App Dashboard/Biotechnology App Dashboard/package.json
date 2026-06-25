@@ -80,6 +80,8 @@
             "api:tunnel": "npx --yes localtunnel --port 80 --local-host 127.0.0.1",
             "api:ngrok": "ngrok http 80",
             "homography:ngrok": "ngrok http 8000",
+            "gateway:start": "node ./scripts/ngrok-gateway.js",
+            "gateway:ngrok": "ngrok http 8088 --pooling-enabled",
             "android:sync": "vite build && cap sync android",
             "android": "npm run android:sync && cap open android",
             "android:daily": "powershell -ExecutionPolicy Bypass -File ./scripts/android-daily.ps1",

@@ -7,6 +7,7 @@ const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const YOLO_BASE_KEY = 'biotech.yolo_api_base';
 const YOLO_FALLBACKS_KEY = 'biotech.yolo_api_fallbacks';
+const YOLO_ENV_SIGNATURE_KEY = 'biotech.yolo_env_signature';
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 
@@ -41,7 +42,34 @@ const unique = (items: string[]) => {
 	return output;
 };
 
+const getEnvSignature = () => {
+	const envPublicBase = (import.meta.env.VITE_PUBLIC_YOLO_API_BASE_URL as string | undefined)?.trim() || '';
+	const envPublicFallbacks =
+		(import.meta.env.VITE_PUBLIC_YOLO_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+	const envAndroidBase = (import.meta.env.VITE_ANDROID_YOLO_API_BASE_URL as string | undefined)?.trim() || '';
+	const envAndroidFallbacks =
+		(import.meta.env.VITE_ANDROID_YOLO_API_BASE_URL_FALLBACKS as string | undefined)?.trim() || '';
+	return [envPublicBase, envPublicFallbacks, envAndroidBase, envAndroidFallbacks].join('|');
+};
+
+const syncOverridesWithEnv = () => {
+	if (typeof window === 'undefined') return;
+	try {
+		const currentSignature = getEnvSignature();
+		const lastSignature = localStorage.getItem(YOLO_ENV_SIGNATURE_KEY) || '';
+		if (currentSignature === lastSignature) return;
+
+		localStorage.removeItem(YOLO_BASE_KEY);
+		localStorage.removeItem(YOLO_FALLBACKS_KEY);
+		localStorage.setItem(YOLO_ENV_SIGNATURE_KEY, currentSignature);
+	} catch (error) {
+		console.error('Failed to sync YOLO override with env:', error);
+	}
+};
+
 const getCandidates = () => {
+	syncOverridesWithEnv();
+
 	const localBase = readLocalOverride(YOLO_BASE_KEY).trim();
 	const localFallbacks = parseBases(readLocalOverride(YOLO_FALLBACKS_KEY));
 	const envPublicBase = (import.meta.env.VITE_PUBLIC_YOLO_API_BASE_URL as string | undefined)?.trim() || '';
@@ -86,6 +114,27 @@ const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: numbe
 	} finally {
 		window.clearTimeout(timeoutId);
 	}
+};
+
+const withTunnelBypassHeader = (base: string, init: RequestInit): RequestInit => {
+	const headers = new Headers(init.headers || {});
+
+	if (base.includes('.loca.lt') && !headers.has('bypass-tunnel-reminder')) {
+		headers.set('bypass-tunnel-reminder', 'true');
+	}
+
+	const isNgrokBase =
+		base.includes('.ngrok-free.dev') || base.includes('.ngrok-free.app') || base.includes('.ngrok.app');
+	if (isNgrokBase && !headers.has('ngrok-skip-browser-warning')) {
+		headers.set('ngrok-skip-browser-warning', 'true');
+	}
+
+	if ([...headers.keys()].length === 0) return init;
+
+	return {
+		...init,
+		headers,
+	};
 };
 
 const loadImageElement = (blob: Blob) =>
@@ -209,7 +258,8 @@ export const analyzeImageViaYolo = async (
 				form.append('disk_mm', String(options.diskMm));
 			}
 
-			const res = await fetchWithTimeout(`${base}/yolo/analyze`, { method: 'POST', body: form }, timeoutMs);
+			const requestInit = withTunnelBypassHeader(base, { method: 'POST', body: form });
+			const res = await fetchWithTimeout(`${base}/yolo/analyze`, requestInit, timeoutMs);
 			if (!res.ok) {
 				lastError = new Error(`HTTP ${res.status} from ${base}`);
 				continue;
