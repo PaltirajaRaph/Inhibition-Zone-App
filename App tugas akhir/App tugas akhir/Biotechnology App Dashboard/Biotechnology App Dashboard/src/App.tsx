@@ -15,6 +15,7 @@ import { Toaster } from './components/ui/sonner';
 import CustomCamera from './plugins/CustomCamera';
 import { processImageViaHomography } from './utils/homographyClient';
 import { analyzeImageViaYolo, type YoloMeasurement } from './utils/yoloClient';
+import { normalizeDiameterMm } from './utils/diameterFormat';
 import { compareAnalysesBySampleOrder, getAnalysisGroupKey } from './utils/sampleGrouping';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -121,12 +122,19 @@ const isJsonResponse = (response: Response) => {
 };
 
 const withTunnelBypassHeader = (base: string, init: RequestInit): RequestInit => {
-  if (!base.includes('.loca.lt')) return init;
-
   const headers = new Headers(init.headers || {});
-  if (!headers.has('bypass-tunnel-reminder')) {
+
+  if (base.includes('.loca.lt') && !headers.has('bypass-tunnel-reminder')) {
     headers.set('bypass-tunnel-reminder', 'true');
   }
+
+  const isNgrokBase =
+    base.includes('.ngrok-free.dev') || base.includes('.ngrok-free.app') || base.includes('.ngrok.app');
+  if (isNgrokBase && !headers.has('ngrok-skip-browser-warning')) {
+    headers.set('ngrok-skip-browser-warning', 'true');
+  }
+
+  if ([...headers.keys()].length === 0) return init;
 
   return {
     ...init,
@@ -150,9 +158,26 @@ const apiRequest = async (
   options?: { timeoutMs?: number; maxCandidates?: number },
 ) => {
   const candidates = getApiCandidates();
-  const orderedCandidates = cachedApiBase ? uniqueApiBases([cachedApiBase, ...candidates]) : candidates;
+  const baseCandidates = cachedApiBase ? uniqueApiBases([cachedApiBase, ...candidates]) : candidates;
   const timeoutMs = options?.timeoutMs ?? REQUEST_TIMEOUT_MS;
-  const maxCandidates = options?.maxCandidates ?? orderedCandidates.length;
+  const maxCandidates = options?.maxCandidates ?? baseCandidates.length;
+
+  let orderedCandidates = baseCandidates;
+  if (!cachedApiBase && baseCandidates.length > 1) {
+    const probeTimeoutMs = 2500;
+    const probeResults = await Promise.all(baseCandidates.map(async (base) => {
+      try {
+        const probeInit = withTunnelBypassHeader(base, { method: 'GET' });
+        const probe = await fetchWithTimeout(`${base}/health`, probeInit, probeTimeoutMs);
+        return { base, ok: probe.ok };
+      } catch {
+        return { base, ok: false };
+      }
+    }));
+
+    const healthy = probeResults.filter((result) => result.ok).map((result) => result.base);
+    orderedCandidates = uniqueApiBases([...healthy, ...baseCandidates]);
+  }
 
   let lastError: unknown = null;
 
@@ -327,7 +352,7 @@ const mapYoloMeasurementToAnalysis = (measurement: YoloMeasurement, index: numbe
   index: Number.isFinite(Number(measurement.index)) ? Number(measurement.index) : index + 1,
   label: String(measurement.label || getSampleLabel(index)),
   result: normalizeDbResult(measurement.result),
-  diameterMm: parseNumber(measurement.diameterMm),
+  diameterMm: normalizeDiameterMm(measurement.diameterMm),
   diskDiameterPx: parseNumber(measurement.diskDiameterPx),
   zoneDiameterPx: parseNumber(measurement.zoneDiameterPx),
   scaleMmPerPx: parseNumber(measurement.scaleMmPerPx),
@@ -363,7 +388,7 @@ const mapApiAnalysisToClient = (row: Record<string, unknown>): AnalysisData => {
     date,
     actionDate: toIsoDateFromTimestamp(String(row.action_date ?? row.actionDate ?? row.test_date ?? '')),
     status: normalizeAnalysisStatus(row.status),
-    diameter: parseNumber(row.diameter),
+    diameter: normalizeDiameterMm(row.diameter),
     antibiotic: String(row.antibiotic_a ?? row.antibioticA ?? row.antibiotic ?? ''),
     antibioticA: String(row.antibiotic_a ?? row.antibioticA ?? ''),
     antibioticADesc: String(row.antibiotic_a_desc ?? row.antibioticADesc ?? ''),
@@ -407,20 +432,40 @@ const loadAnalysesFromStorage = (role: Role | null, username: string): AnalysisD
     const parsed = JSON.parse(stored);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.map((analysis) => ({
-      ...analysis,
-      id: normalizeReportId(String((analysis as AnalysisData).id)),
-      reportGroupId: String((analysis as AnalysisData).reportGroupId || '').trim() || undefined,
-      reportDisplayId: String((analysis as AnalysisData).reportDisplayId || '').trim() || undefined,
-      reportName: String((analysis as AnalysisData).reportName || '').trim() || undefined,
-      sampleId: String((analysis as AnalysisData).sampleId || '').trim() || undefined,
-      tags: Array.isArray((analysis as AnalysisData).tags)
-        ? (analysis as AnalysisData).tags!
-            .map((value) => String(value).trim())
-            .filter((value) => value.length > 0)
-        : undefined,
-      status: normalizeAnalysisStatus((analysis as Partial<AnalysisData>).status),
-    }));
+    return parsed.map((analysis, index) => {
+      const typed = analysis as AnalysisData;
+      return {
+        ...typed,
+        id: normalizeReportId(String(typed.id || index + 1)),
+        reportGroupId: String(typed.reportGroupId || '').trim() || undefined,
+        reportDisplayId: String(typed.reportDisplayId || '').trim() || undefined,
+        reportName: String(typed.reportName || '').trim() || undefined,
+        sampleId: String(typed.sampleId || '').trim() || undefined,
+        tags: Array.isArray(typed.tags)
+          ? typed.tags
+              .map((value) => String(value).trim())
+              .filter((value) => value.length > 0)
+          : undefined,
+        status: normalizeAnalysisStatus((typed as Partial<AnalysisData>).status),
+        diameter: normalizeDiameterMm(typed.diameter),
+        measurements: Array.isArray(typed.measurements)
+          ? typed.measurements.map((measurement, measurementIndex) => ({
+              ...measurement,
+              id: String(measurement?.id || `measurement-${measurementIndex + 1}`),
+              index: Number.isFinite(Number(measurement?.index))
+                ? Number(measurement.index)
+                : measurementIndex + 1,
+              label: String(measurement?.label || getSampleLabel(measurementIndex)),
+              diameterMm: normalizeDiameterMm(measurement?.diameterMm),
+              diskDiameterPx: parseNumber(measurement?.diskDiameterPx),
+              zoneDiameterPx: parseNumber(measurement?.zoneDiameterPx),
+              scaleMmPerPx: parseNumber(measurement?.scaleMmPerPx),
+              diskConfidence: parseNumber(measurement?.diskConfidence),
+              zoneConfidence: parseNumber(measurement?.zoneConfidence),
+            }))
+          : undefined,
+      };
+    });
   } catch (error) {
     console.error('Failed to parse analyses from localStorage:', error);
     localStorage.removeItem(storageKey);
@@ -792,6 +837,7 @@ export default function App() {
 
       const hydrateAnalyses = async (role: Role, username: string, ctx: { organizationId: string; teamId: string; memberId: string }) => {
         const storedAnalyses = loadAnalysesFromStorage(role, username);
+        setAnalyses(storedAnalyses);
         const apiAnalyses = await loadAnalysesFromApi(role, ctx);
         if (apiAnalyses && apiAnalyses.length > 0) {
           const mergedAnalyses = mergeApiAnalysesWithStored(apiAnalyses, storedAnalyses);
@@ -799,7 +845,6 @@ export default function App() {
           persistAnalysesSafely(getAnalysesStorageKey(role, username), mergedAnalyses);
           return;
         }
-        setAnalyses(storedAnalyses);
       };
 
       try {
@@ -940,7 +985,20 @@ export default function App() {
     backView: View = 'dashboard',
     originalImage?: string,
   ) => {
-    const fallbackId = getNextReportId(analyses);
+    const storedAnalysesForUser = (() => {
+      if (currentRole === 'admin') {
+        const username = adminUsername.trim();
+        return username ? loadAnalysesFromStorage('admin', username) : [];
+      }
+      if (currentRole === 'member') {
+        const username = memberUsername.trim();
+        return username ? loadAnalysesFromStorage('member', username) : [];
+      }
+      return [];
+    })();
+
+    const analysisPoolForId = analyses.length > 0 ? analyses : storedAnalysesForUser;
+    const fallbackId = getNextReportId(analysisPoolForId);
     const reportGroupId = createReportGroupId();
     const original = originalImage || processedImage;
     const today = new Date().toISOString().split('T')[0];
@@ -972,35 +1030,52 @@ export default function App() {
       originalImage: original,
       processedImage: yoloData?.processedImage || processedImage,
       diameter: typeof primaryDiameter === 'number'
-        ? primaryDiameter
-        : typeof yoloData?.diameterMm === 'number'
-          ? yoloData.diameterMm
-          : undefined,
+        ? normalizeDiameterMm(primaryDiameter)
+        : normalizeDiameterMm(yoloData?.diameterMm),
       measurements: yoloMeasurements,
       antibiotic: '',
     };
 
-    const savedAnalysis = await createAnalysisInApi(pendingAnalysis);
-    const finalAnalysis = {
-      ...(savedAnalysis ?? pendingAnalysis),
-      reportGroupId,
-      reportDisplayId: savedAnalysis?.reportDisplayId || savedAnalysis?.id || pendingAnalysis.reportDisplayId,
-      originalImage: (savedAnalysis?.originalImage || pendingAnalysis.originalImage),
-      processedImage: (savedAnalysis?.processedImage || pendingAnalysis.processedImage),
-      diameter: savedAnalysis?.diameter ?? pendingAnalysis.diameter,
-      measurements: yoloMeasurements,
-    };
-
-    setCurrentAnalysis(finalAnalysis);
-    setReportFocusId(finalAnalysis.id);
-    setReportFocusGroupId(finalAnalysis.reportGroupId || '');
+    setCurrentAnalysis(pendingAnalysis);
+    setReportFocusId(pendingAnalysis.id);
+    setReportFocusGroupId(pendingAnalysis.reportGroupId || '');
     setAnalyses((prev) => {
-      const updated = [finalAnalysis, ...prev];
+      const baseItems = prev.length > 0 ? prev : storedAnalysesForUser;
+      const updated = [pendingAnalysis, ...baseItems.filter((item) => item.id !== pendingAnalysis.id)];
       persistAnalysesForCurrentUser(updated);
       return updated;
     });
     setReportCreateBackView(backView);
     setCurrentView('reportCreate');
+
+    void (async () => {
+      const savedAnalysis = await createAnalysisInApi(pendingAnalysis);
+      if (!savedAnalysis) return;
+
+      const finalAnalysis: AnalysisData = {
+        ...pendingAnalysis,
+        ...savedAnalysis,
+        reportGroupId: pendingAnalysis.reportGroupId,
+        reportDisplayId: savedAnalysis.reportDisplayId || savedAnalysis.id || pendingAnalysis.reportDisplayId,
+        originalImage: savedAnalysis.originalImage || pendingAnalysis.originalImage,
+        processedImage: savedAnalysis.processedImage || pendingAnalysis.processedImage,
+        diameter: normalizeDiameterMm(savedAnalysis.diameter ?? pendingAnalysis.diameter),
+        measurements: yoloMeasurements,
+      };
+
+      setAnalyses((prev) => {
+        const next = [
+          finalAnalysis,
+          ...prev.filter((item) => item.id !== pendingAnalysis.id && item.id !== finalAnalysis.id),
+        ];
+        persistAnalysesForCurrentUser(next);
+        return next;
+      });
+
+      setCurrentAnalysis((prev) => (prev?.id === pendingAnalysis.id ? finalAnalysis : prev));
+      setReportFocusId((prev) => (prev === pendingAnalysis.id ? finalAnalysis.id : prev));
+      setReportFocusGroupId(finalAnalysis.reportGroupId || '');
+    })();
   };
 	const editCurrentReport = () => {
 		if (!currentAnalysis) return;

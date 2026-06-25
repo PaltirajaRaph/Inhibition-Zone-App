@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import type { AnalysisData } from '../App';
+import { formatDiameterMm } from '../utils/diameterFormat';
 import { compareAnalysesBySampleOrder, getAnalysisGroupKey } from '../utils/sampleGrouping';
 
 const STATUS_COLOR_MAP: Record<string, string> = {
@@ -132,7 +133,10 @@ export default function Dashboard({
                       <p className="bio-member-history-name">{(analysis.bacteriaName ?? '').trim()}</p>
                       <div className="bio-member-history-chips">
                         <span className="bio-member-history-chip">
-                          {analysis.diameter ? `${analysis.diameter} mm` : 'Diameter -'}
+                          {(() => {
+                            const diameterText = formatDiameterMm(analysis.diameter, { placeholder: '' });
+                            return diameterText ? diameterText : 'Diameter -';
+                          })()}
                         </span>
                       </div>
                       <p className="bio-member-history-date">{displayDate}</p>

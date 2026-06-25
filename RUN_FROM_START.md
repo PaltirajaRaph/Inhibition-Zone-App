@@ -1,8 +1,16 @@
-# Inhibition Zone App Setup
+# Inhibition Zone App Setup Guide
 
-This repository is the handoff version for running the inhibition-zone analysis system. It includes the React/Capacitor frontend, PHP API, homography service, YOLO inference service, and the breakpoint CSV used for automatic S/I/R suggestions.
+This guide is the canonical runbook for setting up, developing, and running the project on Windows, including stricter-policy laptops and free ngrok workflow.
 
-## 1. Clone The Repository
+The system includes:
+
+- React + Capacitor frontend
+- PHP API (XAMPP)
+- Homography FastAPI service
+- YOLO FastAPI service
+- Breakpoint CSV for S/I/R suggestions
+
+## 1. Clone Repository
 
 ```powershell
 git clone <REPOSITORY_URL>
@@ -10,68 +18,70 @@ cd Inhibition-Zone-App
 git lfs pull
 ```
 
-`git lfs pull` is required because the YOLO model is stored with Git LFS.
+`git lfs pull` is required because YOLO model files are stored with Git LFS.
 
 ## 2. Install Required Software
 
-Install these first:
+Install:
 
 - Git
 - Git LFS
 - Node.js LTS
 - Python 3.10
-- XAMPP with Apache and MySQL
-- Android Studio with Android SDK
+- XAMPP (Apache + MySQL)
+- Android Studio + Android SDK
 - Android Studio Embedded JDK or JDK 17
+- ngrok
 
-Check the tools:
+Verify:
 
 ```powershell
 node -v
 npm.cmd -v
 py -0p
 git lfs version
+ngrok version
 ```
 
-Use `npm.cmd` in PowerShell on Windows.
-
-If Python 3.10 is missing, install it with:
+If Python 3.10 is missing:
 
 ```powershell
 winget install -e --id Python.Python.3.10
 ```
 
-Then reopen the terminal and confirm `py -0p` shows Python 3.10.
+Then reopen terminal and run `py -0p` again.
 
-## 3. Open The App Folder
+## 3. Go To App Folder
 
-Most app commands are run from:
+All npm scripts must be run from this exact folder:
 
 ```powershell
 cd "App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
 ```
 
-The nested folder layout is intentional because the backend scripts rely on the current relative paths.
+Quick check:
+
+```powershell
+Get-ChildItem package.json
+```
+
+If this file is not found, you are in the wrong folder depth.
 
 ## 4. Install Frontend Dependencies
-
-From the app folder:
 
 ```powershell
 npm.cmd ci
 ```
 
-## 5. Create The Environment File
-
-From the app folder:
+## 5. Configure Environment Variables
 
 ```powershell
 copy .env.example .env
 ```
 
-Edit `.env` based on your target device.
+### Option A: Local LAN (same Wi-Fi)
 
-For Android emulator:
+Emulator:
 
 ```env
 VITE_ANDROID_API_BASE_URL=http://10.0.2.2/biotech-api
@@ -80,13 +90,7 @@ VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://10.0.2.2:8000
 VITE_ANDROID_YOLO_API_BASE_URL=http://10.0.2.2:9000
 ```
 
-For a physical Android phone on the same Wi-Fi, find your PC IPv4 address:
-
-```powershell
-ipconfig
-```
-
-Then set:
+Physical phone on same Wi-Fi:
 
 ```env
 VITE_ANDROID_API_BASE_URL=http://<YOUR_PC_IPV4>/biotech-api
@@ -94,16 +98,56 @@ VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=http://<YOUR_PC_IPV4>:8000
 VITE_ANDROID_YOLO_API_BASE_URL=http://<YOUR_PC_IPV4>:9000
 ```
 
-## 6. Set Up The Database And PHP API
+### Option B: Recommended Free ngrok Single-Tunnel
 
-Start XAMPP and enable:
+Use this to avoid LAN firewall and network policy problems.
 
-- Apache
-- MySQL
+How to get the ngrok URL:
 
-Open phpMyAdmin at `http://localhost/phpmyadmin`.
+1. Start local gateway in app folder:
 
-Create a database named `biotech_dashboard`.
+```powershell
+npm.cmd run gateway:start
+```
+
+2. In a second terminal (same folder), start ngrok:
+
+```powershell
+npm.cmd run gateway:ngrok
+```
+
+3. Copy the URL shown in ngrok output at `Forwarding`.
+Example:
+
+```text
+Forwarding  https://bootlace-slicer-carload.ngrok-free.dev -> http://localhost:8088
+```
+
+Use only the left side URL (`https://bootlace-slicer-carload.ngrok-free.dev`).
+
+Set `.env` using that URL:
+
+```env
+VITE_ANDROID_API_BASE_URL=https://<NGROK_URL>/biotech-api
+VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=https://<NGROK_URL>/homography-service
+VITE_ANDROID_YOLO_API_BASE_URL=https://<NGROK_URL>/yolo-service
+```
+
+Concrete example:
+
+```env
+VITE_ANDROID_API_BASE_URL=https://bootlace-slicer-carload.ngrok-free.dev/biotech-api
+VITE_ANDROID_HOMOGRAPHY_API_BASE_URL=https://bootlace-slicer-carload.ngrok-free.dev/homography-service
+VITE_ANDROID_YOLO_API_BASE_URL=https://bootlace-slicer-carload.ngrok-free.dev/yolo-service
+```
+
+## 6. Setup Database And PHP API
+
+Start XAMPP and enable Apache + MySQL.
+
+Open `http://localhost/phpmyadmin`.
+
+Create DB: `biotech_dashboard`.
 
 Import:
 
@@ -111,61 +155,71 @@ Import:
 App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database/biotech_db.sql
 ```
 
-Then apply every SQL file in this folder in chronological order:
+Run all SQL migration files in order from:
 
 ```text
 App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database/migrations
 ```
 
-Deploy the PHP API into XAMPP from the app folder:
+Deploy PHP API to XAMPP from app folder:
 
 ```powershell
 robocopy ".\database\api" "C:\xampp\htdocs\biotech-api" /MIR
 ```
 
-Verify the API at `http://localhost/biotech-api/health`.
+Verify:
 
-## 7. Create Python Environments
+```powershell
+curl http://localhost/biotech-api/health
+```
 
-The two Python services should use Python 3.10.
+## 7. Setup Python Environments (Python 3.10)
 
-Create the homography environment:
+### Homography
 
 ```powershell
 cd "..\..\homography"
 py -3.10 -m venv .venv-homography
-.\.venv-homography\Scripts\Activate.ps1
-python -m pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
-deactivate
 ```
 
-Create the YOLO environment:
+Install without activation (works on strict PowerShell policies):
+
+```powershell
+.\.venv-homography\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+.\.venv-homography\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+### YOLO
 
 ```powershell
 cd "..\yolo_service"
 py -3.10 -m venv .venv-yolo
-.\.venv-yolo\Scripts\Activate.ps1
-python -m pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
-deactivate
+.\.venv-yolo\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+.\.venv-yolo\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv-yolo\Scripts\python.exe install_torch.py
 ```
 
-The YOLO model file must exist here:
+Verify YOLO uses GPU when available:
+
+```powershell
+.\.venv-yolo\Scripts\python.exe -c "import torch; print(torch.__version__); print('cuda?', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+```
+
+YOLO model file must exist:
 
 ```text
 App tugas akhir/App tugas akhir/YOLO AI/best.pt
 ```
 
-If that file is missing after cloning, rerun:
+If missing:
 
 ```powershell
 git lfs pull
 ```
 
-## 8. Start The Backend Services
+## 8. Start Backend Services
 
-Return to the app folder and run:
+Return to app folder and run:
 
 ```powershell
 npm.cmd run backend:start
@@ -174,52 +228,198 @@ npm.cmd run backend:status
 
 Expected health endpoints:
 
-- PHP API: `http://localhost/biotech-api/health`
-- Homography: `http://localhost:8000/health`
-- YOLO: `http://localhost:9000/health`
+- `http://localhost/biotech-api/health`
+- `http://localhost:8000/health`
+- `http://localhost:9000/health`
 
-If a port is still occupied from an older run:
+If old process/port conflict:
 
 ```powershell
 npm.cmd run backend:start:force
 ```
 
-If Apache and MySQL are already started manually and you only want the Python services:
+If Apache + MySQL are already started manually:
 
 ```powershell
 npm.cmd run backend:start:noxampp
 ```
 
-## 9. Run The Web App
+## 9. Start Single ngrok Tunnel (Free Plan)
 
-From the app folder:
+From app folder, terminal A:
 
 ```powershell
-npm.cmd run dev
+npm.cmd run gateway:start
 ```
 
-Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
-
-## 10. Build And Run Android
-
-From the app folder:
+From app folder, terminal B:
 
 ```powershell
+npm.cmd run gateway:ngrok
+```
+
+This project uses one gateway port (`8088`) and routes all services by path.
+
+Keep both terminals running while testing.
+
+Validate public endpoints:
+
+```powershell
+curl https://<NGROK_URL>/biotech-api/health
+curl https://<NGROK_URL>/homography-service/health
+curl https://<NGROK_URL>/yolo-service/health
+```
+
+## 10. Build And Open Android
+
+From app folder:
+
+```powershell
+cd "Inhibition-Zone-App-main\Inhibition-Zone-App\App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
 npm.cmd run android:sync
 npx cap open android
 ```
 
 In Android Studio:
 
-1. Wait for Gradle sync to finish.
-2. Select an emulator or physical device.
-3. Run the app.
+1. Wait for Gradle sync.
+2. Select emulator or physical phone.
+3. Click Run.
 
-Run `npm.cmd run android:sync` again whenever frontend code or `.env` changes.
+Run `npm.cmd run android:sync` every time `.env` or frontend code changes.
 
-## 11. Keep These Files Local Only
+## 11. Daily Run (Recommended Sequence)
 
-Do not commit these local or generated files:
+From app folder:
+
+```powershell
+npm.cmd run backend:start
+npm.cmd run gateway:start
+npm.cmd run gateway:ngrok
+npm.cmd run android:sync
+npx cap open android
+```
+
+## 12. Troubleshooting (Real Issues Encountered)
+
+### `npm.cmd` not found
+
+Cause: Node.js not installed or PATH not loaded in current terminal.
+
+Fix:
+
+```powershell
+node -v
+where.exe npm.cmd
+```
+
+Reinstall Node.js LTS if needed, then reopen terminal.
+
+### `npm error enoent ... package.json`
+
+Cause: command run from wrong folder depth.
+
+Fix: go to exact app folder and verify `package.json` exists.
+
+### Mistyped command `npm. cmd`
+
+Correct command is `npm.cmd` with no space.
+
+### `No suitable Python runtime found` for `py -3.10`
+
+Cause: Python 3.10 missing.
+
+Fix:
+
+```powershell
+winget install -e --id Python.Python.3.10
+py -3.10 --version
+```
+
+### PowerShell blocks `Activate.ps1`
+
+Use direct interpreter path and skip activation:
+
+```powershell
+.\.venv-yolo\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Optional policy change:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+### Backend says `YOLO process started but did not become healthy`
+
+Cause: usually wrong/missing yolo venv or dependencies.
+
+Fix:
+
+```powershell
+cd "..\..\yolo_service"
+Get-ChildItem -Name .venv*
+.\.venv-yolo\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv-yolo\Scripts\python.exe install_torch.py
+.\.venv-yolo\Scripts\python.exe -c "import torch; print(torch.__version__); print('cuda?', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+.\.venv-yolo\Scripts\python.exe server.py
+curl http://127.0.0.1:9000/health
+```
+
+If startup shows `torch-...+cpu CPU`, rerun `install_torch.py` in the YOLO venv.
+
+### LAN IP works on localhost only, fails on `http://<IP>:8000/health`
+
+Cause: firewall/network profile on stricter PC.
+
+Fix: use single ngrok tunnel workflow in this guide.
+
+### ngrok free warning page appears
+
+Expected on browser. API clients in this project already send bypass headers.
+
+### ngrok `ERR_NGROK_334 endpoint already online`
+
+Fix order:
+
+1. Stop other ngrok sessions.
+2. Use one tunnel only: `npm.cmd run gateway:ngrok`.
+3. This script already uses `--pooling-enabled`.
+
+### Data does not appear immediately after app reopen/update
+
+Cause: cold-start hydration race (UI opened before local/API analyses finished loading).
+
+Status: fixed in app code by loading local analyses first, then merging API data.
+
+If you still see empty history on first open:
+
+1. Confirm login uses the same member/admin account as before.
+2. Wait 2-3 seconds after login for API merge on slow network.
+3. Verify API health endpoint is reachable from your phone via ngrok.
+
+### New analysis ID starts again from 1
+
+Cause: processing started before existing analyses finished hydrating.
+
+Status: fixed in app code by reading stored analyses immediately and using that pool for next ID calculation.
+
+If this still happens, ensure old app data was not cleared by Android uninstall/clear-data.
+
+### Homography/YOLO logs are fast but app stays on Processing too long
+
+Cause: usually API fallback retries (unreachable base URLs) or slow API save call after model inference.
+
+Status: improved in app code by:
+
+1. Prioritizing reachable API candidates via fast `/health` probe.
+2. Navigating to Create Report immediately after inference, while API save continues in background.
+
+If delay persists, check `.env` so the first API base points to your active ngrok URL.
+
+## 13. Files To Keep Local Only
+
+Do not commit:
 
 - `.env`
 - `node_modules`
@@ -228,61 +428,12 @@ Do not commit these local or generated files:
 - Gradle build folders
 - temporary outputs and caches
 
-## 12. Runtime Files That Must Stay In The Repo
+## 14. Runtime Files That Must Stay In Repo
 
-These are part of the application runtime and should not be removed:
+Do not remove:
 
 - `Table 2A.csv`
 - `App tugas akhir/App tugas akhir/YOLO AI/best.pt`
 - `App tugas akhir/App tugas akhir/homography`
 - `App tugas akhir/App tugas akhir/yolo_service`
 - `App tugas akhir/App tugas akhir/Biotechnology App Dashboard/Biotechnology App Dashboard/database`
-
-In Android Studio:
-
-1. Wait for Gradle Sync.
-2. Select Embedded JDK or JDK 17 if asked.
-3. Select emulator or physical phone.
-4. Click Run.
-
-## 12. Daily Run After Setup
-
-Dari folder app:
-"C:\Calvin Institute\Tugas Akhir Production\Inhibition-Zone-App\App tugas akhir\App tugas akhir\Biotechnology App Dashboard\Biotechnology App Dashboard"
-
-Start backend:
-
-```powershell
-npm.cmd run backend:start
-npm.cmd run backend:status
-```
-
-Build/sync Android:
-
-```powershell
-npm.cmd run android:sync
-```
-
-Open Android Studio:
-
-```powershell
-npx cap open android
-```
-
-Or use the shortcut:
-
-```powershell
-npm.cmd run android:daily
-```
-
-If PowerShell blocks `npm`:
-
-```powershell
-npm.cmd ci
-npm.cmd run android:sync
-```
-
-If Gradle JDK is invalid:
-
-- Android Studio > Settings > Build, Execution, Deployment > Build Tools > Gradle
-- Set Gradle JDK to Embedded JDK or JDK 17.
